@@ -90,7 +90,7 @@ public class EstimateService {
                 .orElseThrow(() -> new RuntimeException("Estimate not found with id: " + estimateId));
 
         try {
-            ClassPathResource resource = new ClassPathResource("templates/pdf-template.html");
+            ClassPathResource resource = new ClassPathResource("templates/pdf-Template.html");
             String html = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
             // Branding Info

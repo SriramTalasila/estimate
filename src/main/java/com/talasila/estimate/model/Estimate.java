@@ -44,6 +44,10 @@ public class Estimate {
     @Column(name = "total_discount")
     private BigDecimal totalDiscount = BigDecimal.ZERO;
 
+    private BigDecimal additionalDiscount;
+
+    private String additionalDiscountType;
+
     @Column(name = "tax_amount")
     private BigDecimal taxAmount = BigDecimal.ZERO;
 
@@ -59,6 +63,9 @@ public class Estimate {
 
     @OneToMany(mappedBy = "estimate", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EstimateNote> notes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "estimate", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EstimateCategoryDiscount> categoryDiscounts = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -108,6 +115,22 @@ public class Estimate {
         this.totalDiscount = totalDiscount;
     }
 
+    public BigDecimal getAdditionalDiscount() {
+        return additionalDiscount;
+    }
+
+    public void setAdditionalDiscount(BigDecimal additionalDiscount) {
+        this.additionalDiscount = additionalDiscount;
+    }
+
+    public String getAdditionalDiscountType() {
+        return additionalDiscountType;
+    }
+
+    public void setAdditionalDiscountType(String additionalDiscountType) {
+        this.additionalDiscountType = additionalDiscountType;
+    }
+
     public BigDecimal getTaxAmount() {
         return taxAmount;
     }
@@ -132,4 +155,19 @@ public class Estimate {
         return notes;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public List<EstimateCategoryDiscount> getCategoryDiscounts() {
+        return categoryDiscounts;
+    }
+
+    public void setCategoryDiscounts(List<EstimateCategoryDiscount> categoryDiscounts) {
+        this.categoryDiscounts = categoryDiscounts;
+    }
 }

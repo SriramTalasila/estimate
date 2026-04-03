@@ -134,4 +134,9 @@ public class BusinessService {
         product.setPrice(productRequest.getPrice());
         return productRepository.save(product);
     }
+
+    @Transactional
+    public void deleteProduct(Long productId) {
+        productRepository.deleteById(productId);
+    }
 }

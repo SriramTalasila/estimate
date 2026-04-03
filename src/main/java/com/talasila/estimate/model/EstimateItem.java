@@ -42,6 +42,10 @@ public class EstimateItem {
 
     private BigDecimal discount = BigDecimal.ZERO;
 
+    private String discountType;
+
+    private boolean overrideCategoryDiscount;
+
     @Column(nullable = false)
     private BigDecimal subtotal;
 
@@ -107,6 +111,22 @@ public class EstimateItem {
 
     public void setDiscount(BigDecimal discount) {
         this.discount = discount;
+    }
+
+    public String getDiscountType() {
+        return discountType;
+    }
+
+    public void setDiscountType(String discountType) {
+        this.discountType = discountType;
+    }
+
+    public boolean isOverrideCategoryDiscount() {
+        return overrideCategoryDiscount;
+    }
+
+    public void setOverrideCategoryDiscount(boolean overrideCategoryDiscount) {
+        this.overrideCategoryDiscount = overrideCategoryDiscount;
     }
 
     public BigDecimal getSubtotal() {

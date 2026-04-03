@@ -52,7 +52,10 @@ public class WebSecurityConfig {
         .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> 
-          auth.requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+          auth.requestMatchers(
+                  "/", "/index.html", "/favicon.ico", "/*.css", "/*.js", "/assets/**", "/css/**", "/js/**", "/images/**",
+                  "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
+              )
               .permitAll()
               .anyRequest().authenticated()
         );
@@ -65,7 +68,7 @@ public class WebSecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+    configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200","https://estimate.talasilaapps.in","http://127.0.0.1:5500","https://2ek714v2ethk9lmonmvyugr8p3n41sfadjwa13spwrr1ijfc4i-h885037681.scf.usercontent.goog"));
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
     configuration.setAllowCredentials(true);

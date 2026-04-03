@@ -17,6 +17,10 @@ public class EstimateItemRequest {
 
     private BigDecimal discount;
 
+    private String discountType;
+
+    private boolean overrideCategoryDiscount;
+
     public Long getProductId() {
         return productId;
     }
@@ -47,5 +51,21 @@ public class EstimateItemRequest {
 
     public void setDiscount(BigDecimal discount) {
         this.discount = discount;
+    }
+
+    public String getDiscountType() {
+        return discountType;
+    }
+
+    public void setDiscountType(String discountType) {
+        this.discountType = discountType;
+    }
+
+    public boolean isOverrideCategoryDiscount() {
+        return overrideCategoryDiscount;
+    }
+
+    public void setOverrideCategoryDiscount(boolean overrideCategoryDiscount) {
+        this.overrideCategoryDiscount = overrideCategoryDiscount;
     }
 }

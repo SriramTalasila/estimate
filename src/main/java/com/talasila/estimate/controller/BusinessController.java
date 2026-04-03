@@ -133,6 +133,14 @@ public class BusinessController {
         return ResponseEntity.ok(mapToProductResponse(updatedProduct));
     }
 
+    @DeleteMapping("/products/{productId}")
+    @Operation(summary = "Update an existing product")
+    @PreAuthorize("hasRole('BUSINESS_OWNER') and @businessSecurityService.isOwnerOfProduct(authentication, #productId)")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long productId) {
+        businessService.deleteProduct(productId);
+        return ResponseEntity.ok("Product deleted successfully. ");
+    }
+
     private BusinessResponse mapToBusinessResponse(Business business) {
         return new BusinessResponse(business.getId(), business.getShopName(), business.getShopAddress(), business.getPhone(), business.getGstNumber());
     }

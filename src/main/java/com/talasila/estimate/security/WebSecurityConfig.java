@@ -44,31 +44,29 @@ public class WebSecurityConfig {
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
-  
+
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.cors(Customizer.withDefaults())
         .csrf(csrf -> csrf.disable())
         .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> 
-          auth.requestMatchers(
-                  "/", "/index.html", "/favicon.ico", "/*.css", "/*.js", "/assets/**", "/css/**", "/js/**", "/images/**",
-                  "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
-              )
-              .permitAll()
-              .anyRequest().authenticated()
-        );
-    
+        .authorizeHttpRequests(auth -> auth.requestMatchers(
+            "/", "/index.html", "/favicon.ico", "/*.css", "/*.js", "/assets/**", "/css/**", "/js/**", "/images/**",
+            "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+            .permitAll()
+            .anyRequest().authenticated());
+
     http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-    
+
     return http.build();
   }
 
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200","https://estimate.talasilaapps.in","http://127.0.0.1:5500","https://2ek714v2ethk9lmonmvyugr8p3n41sfadjwa13spwrr1ijfc4i-h885037681.scf.usercontent.goog"));
+    configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "https://estimate.talasilaapps.in",
+        "http://127.0.0.1:5500", "http://192.168.0.169:8080"));
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
     configuration.setAllowCredentials(true);

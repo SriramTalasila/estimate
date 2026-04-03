@@ -1,8 +1,11 @@
 spring:
+  config:
+    activate:
+      on-profile: prod
   datasource:
-    url: jdbc:postgresql://localhost:5432/estimate
-    username: estimate
-    password: Estimate@123
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -11,9 +14,11 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         schema: estimate
+        jdbc:
+          time_zone: UTC
     show-sql: true
 app:
   jwt:
-    secret: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    secret: ${JWT_SECRET}
     expirationMs: 86400000
     cookieName: talasila-jwt

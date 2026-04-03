@@ -721,7 +721,7 @@ createApp({
         // App State
         const isDemoMode = ref(false); // Default to Live Server
         const showSettings = ref(false);
-        const apiBaseUrl = ref('http://localhost:8080');
+        const apiBaseUrl = ref(window.location.origin);
         const view = ref('auth'); // 'auth', 'dashboard', 'estimate-form'
         const authMode = ref('login'); // 'login', 'signup'
         const currentTab = ref('estimates'); // 'estimates', 'catalog', 'profile'

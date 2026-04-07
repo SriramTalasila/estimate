@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,6 +37,7 @@ import com.talasila.estimate.repository.UserRepository;
 import com.talasila.estimate.security.JwtUtils;
 import com.talasila.estimate.service.UserDetailsImpl;
 
+import jakarta.servlet.http.HttpServletRequest;
 @Tag(name = "Authentication", description = "APIs for user sign-up, sign-in, and sign-out.")
 @RestController
 @RequestMapping("/api/auth")
@@ -67,16 +69,37 @@ public class AuthController {
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
     ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+    ResponseCookie refreshCookie = jwtUtils.generateRefreshJwtCookie(userDetails);
 
-    List<String> roles = userDetails.getAuthorities().stream()
-        .map(item -> item.getAuthority())
-        .collect(Collectors.toList());
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+        .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+        .body(buildUserInfoResponse(userDetails));
+  }
 
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
-        .body(new UserInfoResponse(userDetails.getId(),
-                                   userDetails.getUsername(),
-                                   userDetails.getEmail(),
-                                   roles));
+  @PostMapping("/refresh-token")
+  @Operation(summary = "Refresh access token", description = "Validates the refresh token cookie and issues a new access token cookie.")
+  public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+    String refreshToken = jwtUtils.getJwtRefreshFromCookies(request);
+    if (refreshToken == null || !jwtUtils.validateJwtRefreshToken(refreshToken)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .header(HttpHeaders.SET_COOKIE, jwtUtils.getCleanJwtCookie().toString())
+          .header(HttpHeaders.SET_COOKIE, jwtUtils.getCleanJwtRefreshCookie().toString())
+          .body(new MessageResponse("Error: Refresh token is missing or invalid."));
+    }
+
+    String username = jwtUtils.getUserNameFromJwtToken(refreshToken);
+    UserDetailsImpl userDetails = (UserDetailsImpl) userRepository.findByUsername(username)
+        .map(UserDetailsImpl::build)
+        .orElseThrow(() -> new RuntimeException("Error: User not found."));
+
+    ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+    ResponseCookie newRefreshCookie = jwtUtils.generateRefreshJwtCookie(userDetails);
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+        .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
+        .body(buildUserInfoResponse(userDetails));
   }
 
   @PostMapping("/signup")
@@ -134,8 +157,22 @@ public class AuthController {
   @PostMapping("/signout")
   @Operation(summary = "Sign out user", description = "Clears the JWT cookie, effectively signing the user out.")
   public ResponseEntity<?> logoutUser() {
-    ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
+    ResponseCookie accessCookie = jwtUtils.getCleanJwtCookie();
+    ResponseCookie refreshCookie = jwtUtils.getCleanJwtRefreshCookie();
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+        .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
         .body(new MessageResponse("You've been signed out!"));
+  }
+
+  private UserInfoResponse buildUserInfoResponse(UserDetailsImpl userDetails) {
+    List<String> roles = userDetails.getAuthorities().stream()
+        .map(item -> item.getAuthority())
+        .collect(Collectors.toList());
+
+    return new UserInfoResponse(userDetails.getId(),
+        userDetails.getUsername(),
+        userDetails.getEmail(),
+        roles);
   }
 }

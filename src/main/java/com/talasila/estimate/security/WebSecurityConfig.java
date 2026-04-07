@@ -53,7 +53,7 @@ public class WebSecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth.requestMatchers(
             "/", "/index.html", "/favicon.ico", "/*.css", "/*.js", "/assets/**", "/css/**", "/js/**", "/images/**",
-            "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+            "/api/auth/**", "/public/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
             .permitAll()
             .anyRequest().authenticated());
 

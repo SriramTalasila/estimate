@@ -152,6 +152,4 @@ public class BusinessController {
     private ProductResponse mapToProductResponse(Product product) {
         return new ProductResponse(product.getId(), product.getName(), product.getUnit(), product.getPrice());
     }
-
-    
 }

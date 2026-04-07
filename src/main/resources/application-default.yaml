@@ -20,5 +20,8 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
-    expirationMs: 86400000
+    expirationMs: 86400
     cookieName: talasila-jwt
+    jwtRefreshExpirationMs: 2592000000
+    jwtRefreshCookieName: talasila-jwt-refresh
+    pdfShareExpirationMs: 604800000

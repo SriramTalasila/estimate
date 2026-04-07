@@ -2,14 +2,14 @@ package com.talasila.estimate.security;
 
 import java.security.Key;
 import java.util.Date;
-
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.security.core.GrantedAuthority;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.WebUtils;
 
@@ -28,34 +28,52 @@ import jakarta.servlet.http.HttpServletRequest;
 @Component
 public class JwtUtils {
   private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
+  private static final String ACCESS_TOKEN_TYPE = "access";
+  private static final String REFRESH_TOKEN_TYPE = "refresh";
+  private static final String ESTIMATE_SHARE_TOKEN_TYPE = "estimate_share";
 
   @Value("${app.jwt.secret}")
   private String jwtSecret;
 
   @Value("${app.jwt.expirationMs}")
-  private int jwtExpirationMs;
+  private long jwtExpirationMs;
 
   @Value("${app.jwt.cookieName}")
   private String jwtCookie;
 
+  @Value("${app.jwt.jwtRefreshExpirationMs}")
+  private long jwtRefreshExpirationMs;
+
+  @Value("${app.jwt.jwtRefreshCookieName}")
+  private String jwtRefreshCookie;
+
+  @Value("${app.jwt.pdfShareExpirationMs}")
+  private long pdfShareExpirationMs;
+
   public String getJwtFromCookies(HttpServletRequest request) {
-    Cookie cookie = WebUtils.getCookie(request, jwtCookie);
-    if (cookie != null) {
-      return cookie.getValue();
-    } else {
-      return null;
-    }
+    return getCookieValue(request, jwtCookie);
+  }
+
+  public String getJwtRefreshFromCookies(HttpServletRequest request) {
+    return getCookieValue(request, jwtRefreshCookie);
   }
 
   public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
-    String jwt = generateToken(userPrincipal);
-    ResponseCookie cookie = ResponseCookie.from(jwtCookie, jwt).path("/api").maxAge(24 * 60 * 60).httpOnly(true).sameSite("None").secure(true).build();
-    return cookie;
+    String jwt = generateToken(userPrincipal, ACCESS_TOKEN_TYPE, jwtExpirationMs);
+    return buildCookie(jwtCookie, jwt, jwtExpirationMs / 1000L);
+  }
+
+  public ResponseCookie generateRefreshJwtCookie(UserDetailsImpl userPrincipal) {
+    String refreshToken = generateToken(userPrincipal, REFRESH_TOKEN_TYPE, jwtRefreshExpirationMs);
+    return buildCookie(jwtRefreshCookie, refreshToken, jwtRefreshExpirationMs / 1000L);
   }
 
   public ResponseCookie getCleanJwtCookie() {
-    ResponseCookie cookie = ResponseCookie.from(jwtCookie, null).path("/api").build();
-    return cookie;
+    return buildCookie(jwtCookie, "", 0);
+  }
+
+  public ResponseCookie getCleanJwtRefreshCookie() {
+    return buildCookie(jwtRefreshCookie, "", 0);
   }
 
   public String getUserNameFromJwtToken(String token) {
@@ -63,14 +81,89 @@ public class JwtUtils {
         .parseClaimsJws(token).getBody().getSubject();
   }
 
+  public boolean validateJwtToken(String authToken) {
+    return validateToken(authToken, ACCESS_TOKEN_TYPE);
+  }
+
+  public boolean validateJwtRefreshToken(String authToken) {
+    return validateToken(authToken, REFRESH_TOKEN_TYPE);
+  }
+
+  public String generateEstimateShareToken(Long estimateId) {
+    Date now = new Date();
+
+    return Jwts.builder()
+        .claim("estimateId", estimateId)
+        .claim("tokenType", ESTIMATE_SHARE_TOKEN_TYPE)
+        .setIssuedAt(now)
+        .setExpiration(new Date(now.getTime() + pdfShareExpirationMs))
+        .signWith(key(), SignatureAlgorithm.HS256)
+        .compact();
+  }
+
+  public boolean validateEstimateShareToken(String token, Long estimateId) {
+    try {
+      Long tokenEstimateId = Jwts.parserBuilder()
+          .setSigningKey(key())
+          .build()
+          .parseClaimsJws(token)
+          .getBody()
+          .get("estimateId", Long.class);
+
+      String tokenType = Jwts.parserBuilder()
+          .setSigningKey(key())
+          .build()
+          .parseClaimsJws(token)
+          .getBody()
+          .get("tokenType", String.class);
+
+      return ESTIMATE_SHARE_TOKEN_TYPE.equals(tokenType) && estimateId.equals(tokenEstimateId);
+    } catch (MalformedJwtException e) {
+      logger.error("Invalid estimate share token: {}", e.getMessage());
+    } catch (ExpiredJwtException e) {
+      logger.error("Estimate share token is expired: {}", e.getMessage());
+    } catch (UnsupportedJwtException e) {
+      logger.error("Estimate share token is unsupported: {}", e.getMessage());
+    } catch (IllegalArgumentException e) {
+      logger.error("Estimate share token claims are empty: {}", e.getMessage());
+    }
+
+    return false;
+  }
+
+  private String getCookieValue(HttpServletRequest request, String cookieName) {
+    Cookie cookie = WebUtils.getCookie(request, cookieName);
+    return cookie != null ? cookie.getValue() : null;
+  }
+
+  private ResponseCookie buildCookie(String cookieName, String value, long maxAgeSeconds) {
+    return ResponseCookie.from(cookieName, value)
+        .path("/api")
+        .maxAge(maxAgeSeconds)
+        .httpOnly(true)
+        .sameSite("None")
+        .secure(true)
+        .build();
+  }
+
   private Key key() {
     return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
   }
 
-  public boolean validateJwtToken(String authToken) {
+  private boolean validateToken(String authToken, String expectedTokenType) {
     try {
-      Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
-      return true;
+      String tokenType = Jwts.parserBuilder()
+          .setSigningKey(key())
+          .build()
+          .parseClaimsJws(authToken)
+          .getBody()
+          .get("tokenType", String.class);
+
+      if (ACCESS_TOKEN_TYPE.equals(expectedTokenType)) {
+        return tokenType == null || ACCESS_TOKEN_TYPE.equals(tokenType);
+      }
+
+      return expectedTokenType.equals(tokenType);
     } catch (MalformedJwtException e) {
       logger.error("Invalid JWT token: {}", e.getMessage());
     } catch (ExpiredJwtException e) {
@@ -84,16 +177,19 @@ public class JwtUtils {
     return false;
   }
 
-  public String generateToken(UserDetailsImpl userPrincipal) {
+  private String generateToken(UserDetailsImpl userPrincipal, String tokenType, long expirationMs) {
     List<String> roles = userPrincipal.getAuthorities().stream()
         .map(GrantedAuthority::getAuthority)
         .collect(Collectors.toList());
 
+    Date now = new Date();
+
     return Jwts.builder()
         .setSubject(userPrincipal.getUsername())
         .claim("roles", roles)
-        .setIssuedAt(new Date())
-        .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+        .claim("tokenType", tokenType)
+        .setIssuedAt(now)
+        .setExpiration(new Date(now.getTime() + expirationMs))
         .signWith(key(), SignatureAlgorithm.HS256)
         .compact();
   }

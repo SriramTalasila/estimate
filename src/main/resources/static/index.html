@@ -31,664 +31,679 @@
 
 <div id="app" v-cloak class="min-h-screen flex flex-col">
     
-    <!-- Confirm Modal -->
-    <div v-if="confirmDialog.isOpen" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 print-hide">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
-            <div class="p-6">
-                <div class="flex items-center gap-3 text-red-600 mb-4">
-                    <div class="p-2 bg-red-50 rounded-full"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
-                    <h3 class="text-lg font-bold text-gray-900">{{ confirmDialog.title }}</h3>
-                </div>
-                <p class="text-sm text-gray-500">{{ confirmDialog.message }}</p>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
-                <button @click="closeConfirm" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">Cancel</button>
-                <button @click="confirmAction" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors shadow-sm">Confirm</button>
-            </div>
-        </div>
+    <!-- Full Screen Loader for Initial Session Check -->
+    <div v-if="isInitializing" class="flex-1 flex flex-col items-center justify-center bg-gray-50">
+        <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-blue-600 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-900 tracking-tight">EstiMate</h2>
+        <p class="text-sm text-gray-500 mt-2 font-medium">Verifying session...</p>
     </div>
 
-    <!-- Navbar -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm print-hide">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" @click="view = isAuthenticated ? 'dashboard' : 'auth'">
-                <div class="bg-blue-600 p-1.5 rounded-lg">
-                    <i data-lucide="file-text" class="text-white w-5 h-5"></i>
+    <!-- Main App Wrapper (Loads after auth check) -->
+    <template v-else>
+        <!-- Confirm Modal -->
+        <div v-if="confirmDialog.isOpen" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 print-hide">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+                <div class="p-6">
+                    <div class="flex items-center gap-3 text-red-600 mb-4">
+                        <div class="p-2 bg-red-50 rounded-full"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+                        <h3 class="text-lg font-bold text-gray-900">{{ confirmDialog.title }}</h3>
+                    </div>
+                    <p class="text-sm text-gray-500">{{ confirmDialog.message }}</p>
                 </div>
-                <h1 class="text-xl font-semibold text-gray-900 tracking-tight">EstiMate</h1>
+                <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                    <button @click="closeConfirm" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">Cancel</button>
+                    <button @click="confirmAction" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors shadow-sm">Confirm</button>
+                </div>
             </div>
+        </div>
+
+        <!-- Navbar -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm print-hide">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" @click="view = isAuthenticated ? 'dashboard' : 'auth'">
+                    <div class="bg-blue-600 p-1.5 rounded-lg">
+                        <i data-lucide="file-text" class="text-white w-5 h-5"></i>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-900 tracking-tight">EstiMate</h1>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center text-sm font-medium" :class="isDemoMode ? 'text-amber-500' : 'text-emerald-500'">
+                        <span class="relative flex h-2.5 w-2.5 mr-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="isDemoMode ? 'bg-amber-400' : 'bg-emerald-400'"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="isDemoMode ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+                        </span>
+                        <span class="hidden sm:inline">{{ isDemoMode ? 'Demo Mode' : 'Live API' }}</span>
+                    </div>
+                    
+                    <button @click="toggleSettings" class="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors" title="API Settings">
+                        <i data-lucide="server" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <button v-if="isAuthenticated" @click="logout()" class="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors flex items-center gap-1">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Sign Out</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sub Navigation Tabs (When Authenticated) -->
+        <div v-if="isAuthenticated && view !== 'estimate-form'" class="bg-white border-b border-gray-200 shadow-sm print-hide">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-8 overflow-x-auto custom-scrollbar">
+                    <button @click="currentTab = 'estimates'" :class="currentTab === 'estimates' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        Estimates
+                    </button>
+                    <button @click="currentTab = 'catalog'" :class="currentTab === 'catalog' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" :disabled="!hasBusinessProfile" :title="!hasBusinessProfile ? 'Create a business profile first' : ''">
+                        Catalog (Products & Categories)
+                    </button>
+                    <button @click="currentTab = 'profile'" :class="currentTab === 'profile' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                        Business Profile
+                        <i v-if="!hasBusinessProfile" data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
-            <div class="flex items-center gap-4">
-                <div class="flex items-center text-sm font-medium" :class="isDemoMode ? 'text-amber-500' : 'text-emerald-500'">
-                    <span class="relative flex h-2.5 w-2.5 mr-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="isDemoMode ? 'bg-amber-400' : 'bg-emerald-400'"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="isDemoMode ? 'bg-amber-500' : 'bg-emerald-500'"></span>
-                    </span>
-                    <span class="hidden sm:inline">{{ isDemoMode ? 'Demo Mode' : 'Live API' }}</span>
-                </div>
-                
-                <button @click="toggleSettings" class="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors" title="API Settings">
-                    <i data-lucide="server" class="w-5 h-5"></i>
-                </button>
-                
-                <button v-if="isAuthenticated" @click="logout()" class="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors flex items-center gap-1">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                    <span class="hidden sm:inline">Sign Out</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Sub Navigation Tabs (When Authenticated) -->
-    <div v-if="isAuthenticated && view !== 'estimate-form'" class="bg-white border-b border-gray-200 shadow-sm print-hide">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <nav class="flex space-x-8 overflow-x-auto custom-scrollbar">
-                <button @click="currentTab = 'estimates'" :class="currentTab === 'estimates' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                    Estimates
-                </button>
-                <button @click="currentTab = 'catalog'" :class="currentTab === 'catalog' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" :disabled="!hasBusinessProfile" :title="!hasBusinessProfile ? 'Create a business profile first' : ''">
-                    Catalog (Products & Categories)
-                </button>
-                <button @click="currentTab = 'profile'" :class="currentTab === 'profile' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                    Business Profile
-                    <i v-if="!hasBusinessProfile" data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
-                </button>
-            </nav>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <!-- API Settings Modal -->
-        <div v-if="showSettings" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 print-hide">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900">API Configuration</h3>
-                    <button @click="showSettings = false" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Base API URL</label>
-                        <input v-model="apiBaseUrl" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
+            <!-- API Settings Modal -->
+            <div v-if="showSettings" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 print-hide">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">API Configuration</h3>
+                        <button @click="showSettings = false" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
                     </div>
-                    <div class="flex items-center p-3 rounded-lg border" :class="(isAuthenticated && !isAdmin) ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-blue-50 border-blue-100'">
-                        <input type="checkbox" id="demoToggle" v-model="isDemoMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" :disabled="isAuthenticated && !isAdmin">
-                        <label for="demoToggle" class="ml-2 block text-sm font-medium" :class="(isAuthenticated && !isAdmin) ? 'text-gray-500' : 'text-blue-800'">
-                            Enable Demo Mode (Mock API)
-                        </label>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Base API URL</label>
+                            <input v-model="apiBaseUrl" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm">
+                        </div>
+                        <div class="flex items-center p-3 rounded-lg border" :class="(isAuthenticated && !isAdmin) ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-blue-50 border-blue-100'">
+                            <input type="checkbox" id="demoToggle" v-model="isDemoMode" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" :disabled="isAuthenticated && !isAdmin">
+                            <label for="demoToggle" class="ml-2 block text-sm font-medium" :class="(isAuthenticated && !isAdmin) ? 'text-gray-500' : 'text-blue-800'">
+                                Enable Demo Mode (Mock API)
+                            </label>
+                        </div>
+                        <p v-if="isAuthenticated && !isAdmin" class="text-xs text-red-500 mt-1 font-medium">Demo mode is restricted to Admin users.</p>
+                        <p v-else class="text-xs text-gray-500 mt-1">Demo mode allows you to interact with the UI without needing a live backend server.</p>
                     </div>
-                    <p v-if="isAuthenticated && !isAdmin" class="text-xs text-red-500 mt-1 font-medium">Demo mode is restricted to Admin users.</p>
-                    <p v-else class="text-xs text-gray-500 mt-1">Demo mode allows you to interact with the UI without needing a live backend server.</p>
-                </div>
-                <div class="px-6 py-4 bg-gray-50 flex justify-end">
-                    <button @click="showSettings = false" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Done</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Auth View -->
-        <transition name="fade" mode="out-in">
-            <div v-if="view === 'auth'" key="auth" class="max-w-md mx-auto mt-12 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="flex border-b border-gray-200">
-                    <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-gray-50 text-gray-500 hover:text-gray-700'" class="flex-1 py-4 text-sm font-semibold transition-colors">Sign In</button>
-                    <button @click="authMode = 'signup'" :class="authMode === 'signup' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-gray-50 text-gray-500 hover:text-gray-700'" class="flex-1 py-4 text-sm font-semibold transition-colors border-l border-gray-200">Sign Up</button>
-                </div>
-                <div class="px-8 py-8">
-                    <!-- Login Form -->
-                    <form v-if="authMode === 'login'" @submit.prevent="login" class="space-y-5">
-                        <div class="text-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Welcome Back</h2>
-                            <p class="text-sm text-gray-500 mt-1">Sign in to manage your estimates</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                            <input v-model="credentials.username" type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                            <input v-model="credentials.password" type="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex justify-center items-center gap-2" :disabled="loading">
-                            <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                            {{ loading ? 'Processing...' : 'Sign In' }}
-                        </button>
-                    </form>
-
-                    <!-- Signup Form -->
-                    <form v-else @submit.prevent="signup" class="space-y-5">
-                        <div class="text-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Create Account</h2>
-                            <p class="text-sm text-gray-500 mt-1">Register to start creating estimates</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                            <input v-model="signupData.username" type="text" required minlength="3" maxlength="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input v-model="signupData.email" type="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                            <input v-model="signupData.password" type="password" required minlength="6" maxlength="40" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex justify-center items-center gap-2" :disabled="loading">
-                            <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                            {{ loading ? 'Processing...' : 'Create Account' }}
-                        </button>
-                    </form>
-                    
-                    <div v-if="errorMsg" class="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100 flex items-start gap-2">
-                        <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
-                        <span>{{ errorMsg }}</span>
-                    </div>
-                    <div v-if="successMsg" class="mt-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-100 flex items-start gap-2">
-                        <i data-lucide="check-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
-                        <span>{{ successMsg }}</span>
+                    <div class="px-6 py-4 bg-gray-50 flex justify-end">
+                        <button @click="showSettings = false" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Done</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Dashboard View -->
-            <div v-else-if="view === 'dashboard'" key="dashboard" class="space-y-6">
-
-                <!-- Alert for Missing Business Profile -->
-                <div v-if="!hasBusinessProfile && currentTab !== 'profile'" class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
-                    <div class="flex">
-                        <div class="flex-shrink-0"><i data-lucide="alert-triangle" class="h-5 w-5 text-amber-500"></i></div>
-                        <div class="ml-3">
-                            <p class="text-sm text-amber-700 font-medium">You need to set up your Business Profile before you can manage products or create estimates.</p>
-                            <p class="mt-2 text-sm"><button @click="currentTab = 'profile'" class="font-medium text-amber-700 hover:text-amber-600 underline">Set up profile now &rarr;</button></p>
-                        </div>
+            <!-- Auth View -->
+            <transition name="fade" mode="out-in">
+                <div v-if="view === 'auth'" key="auth" class="max-w-md mx-auto mt-12 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="flex border-b border-gray-200">
+                        <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-gray-50 text-gray-500 hover:text-gray-700'" class="flex-1 py-4 text-sm font-semibold transition-colors">Sign In</button>
+                        <button @click="authMode = 'signup'" :class="authMode === 'signup' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'bg-gray-50 text-gray-500 hover:text-gray-700'" class="flex-1 py-4 text-sm font-semibold transition-colors border-l border-gray-200">Sign Up</button>
                     </div>
-                </div>
-
-                <!-- 1. Estimates Tab -->
-                <div v-if="currentTab === 'estimates' && hasBusinessProfile">
-                    
-                    <!-- Mini Dashboard -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
-                            <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                    <div class="px-8 py-8">
+                        <!-- Login Form -->
+                        <form v-if="authMode === 'login'" @submit.prevent="login" class="space-y-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-2xl font-bold text-gray-900">Welcome Back</h2>
+                                <p class="text-sm text-gray-500 mt-1">Sign in to manage your estimates</p>
+                            </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium">Today's Total</p>
-                                <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.today) }}</h3>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                <input v-model="credentials.username" type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
                             </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
-                            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="bar-chart-2" class="w-6 h-6"></i></div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium">This Month</p>
-                                <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.month) }}</h3>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input v-model="credentials.password" type="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
                             </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
-                            <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
-                            <div>
-                                <p class="text-sm text-gray-500 font-medium">This Year</p>
-                                <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.year) }}</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Estimates</h2>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <div class="relative">
-                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                <input v-model="searchQuery" type="text" placeholder="Search estimates..." class="pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm w-full sm:w-64 transition-shadow">
-                            </div>
-                            <button @click="openCreateForm" class="shrink-0 inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                                <i data-lucide="plus" class="w-4 h-4"></i> New Estimate
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex justify-center items-center gap-2" :disabled="loading">
+                                <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                {{ loading ? 'Processing...' : 'Sign In' }}
                             </button>
-                        </div>
-                    </div>
+                        </form>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div v-if="loading" class="p-12 flex justify-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-600"></i></div>
-                        
-                        <div v-else-if="filteredEstimates.length === 0" class="p-12 text-center text-gray-500">
-                            <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+                        <!-- Signup Form -->
+                        <form v-else @submit.prevent="signup" class="space-y-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-2xl font-bold text-gray-900">Create Account</h2>
+                                <p class="text-sm text-gray-500 mt-1">Register to start creating estimates</p>
                             </div>
-                            <p class="text-lg font-medium text-gray-900 mb-1">No estimates found</p>
-                            <p class="text-sm mb-4" v-if="searchQuery">We couldn't find any estimates matching "{{ searchQuery }}".</p>
-                            <p class="text-sm mb-4" v-else>Create your first estimate to get started.</p>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                <input v-model="signupData.username" type="text" required minlength="3" maxlength="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input v-model="signupData.email" type="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input v-model="signupData.password" type="password" required minlength="6" maxlength="40" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex justify-center items-center gap-2" :disabled="loading">
+                                <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                {{ loading ? 'Processing...' : 'Create Account' }}
+                            </button>
+                        </form>
+                        
+                        <div v-if="errorMsg" class="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100 flex items-start gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                            <span>{{ errorMsg }}</span>
                         </div>
-
-                        <div v-else class="overflow-x-auto custom-scrollbar">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                                        <th class="px-6 py-4">Estimate #</th>
-                                        <th class="px-6 py-4">Customer</th>
-                                        <th class="px-6 py-4 text-right">Total</th>
-                                        <th class="px-6 py-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 text-sm">
-                                    <tr v-for="est in filteredEstimates" :key="est.id" class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-4 font-medium text-gray-900">{{ est.estimateNumber || 'EST-00' + est.id }}</td>
-                                        <td class="px-6 py-4">
-                                            <div class="text-gray-900 font-medium">{{ est.customerName || 'Walk-in Customer' }}</div>
-                                            <div class="text-gray-500 text-xs">{{ est.customerPhone }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right font-medium text-gray-900">{{ formatCurrency(est.finalTotal) }}</td>
-                                        <td class="px-6 py-4 text-right print-hide">
-                                            <div class="flex items-center justify-end gap-3">
-                                                <button @click="shareEstimate(est)" class="text-gray-400 hover:text-green-500 transition-colors" title="Share via WhatsApp">
-                                                    <i data-lucide="message-circle" class="w-4 h-4"></i>
-                                                </button>
-                                                <button @click="printEstimate(est)" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Print/Download PDF">
-                                                    <i data-lucide="printer" class="w-4 h-4"></i>
-                                                </button>
-                                                <button @click="openEditForm(est)" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
-                                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
-                                                </button>
-                                                <button @click="deleteEstimate(est.id)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
-                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div v-if="successMsg" class="mt-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-100 flex items-start gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                            <span>{{ successMsg }}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. Catalog (Products & Categories) Tab -->
-                <div v-if="currentTab === 'catalog' && hasBusinessProfile" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <!-- Categories Sidebar -->
-                    <div class="lg:col-span-1 space-y-4">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
-                            <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                                <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wider">Categories</h3>
+                <!-- Dashboard View -->
+                <div v-else-if="view === 'dashboard'" key="dashboard" class="space-y-6">
+
+                    <!-- Alert for Missing Business Profile -->
+                    <div v-if="!hasBusinessProfile && currentTab !== 'profile'" class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0"><i data-lucide="alert-triangle" class="h-5 w-5 text-amber-500"></i></div>
+                            <div class="ml-3">
+                                <p class="text-sm text-amber-700 font-medium">You need to set up your Business Profile before you can manage products or create estimates.</p>
+                                <p class="mt-2 text-sm"><button @click="currentTab = 'profile'" class="font-medium text-amber-700 hover:text-amber-600 underline">Set up profile now &rarr;</button></p>
                             </div>
-                            <div class="p-3 border-b border-gray-100">
-                                <form @submit.prevent="createCategory" class="flex gap-2">
-                                    <input v-model="newCategoryName" type="text" placeholder="New Category..." required class="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
-                                    <button type="submit" class="bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-gray-800" :disabled="loadingCat"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- 1. Estimates Tab -->
+                    <div v-if="currentTab === 'estimates' && hasBusinessProfile">
+                        
+                        <!-- Mini Dashboard -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
+                                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">Today's Total</p>
+                                    <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.today) }}</h3>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
+                                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="bar-chart-2" class="w-6 h-6"></i></div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">This Month</p>
+                                    <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.month) }}</h3>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
+                                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium">This Year</p>
+                                    <h3 class="text-xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.year) }}</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900">Estimates</h2>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="relative">
+                                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input v-model="searchQuery" type="text" placeholder="Search estimates..." class="pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm w-full sm:w-64 transition-shadow">
+                                </div>
+                                <button @click="openCreateForm" class="shrink-0 inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> New Estimate
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div v-if="loading" class="p-12 flex justify-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-600"></i></div>
+                            
+                            <div v-else-if="filteredEstimates.length === 0" class="p-12 text-center text-gray-500">
+                                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+                                </div>
+                                <p class="text-lg font-medium text-gray-900 mb-1">No estimates found</p>
+                                <p class="text-sm mb-4" v-if="searchQuery">We couldn't find any estimates matching "{{ searchQuery }}".</p>
+                                <p class="text-sm mb-4" v-else>Create your first estimate to get started.</p>
+                            </div>
+
+                            <div v-else class="overflow-x-auto custom-scrollbar">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                                            <th class="px-6 py-4">Estimate #</th>
+                                            <th class="px-6 py-4">Customer</th>
+                                            <th class="px-6 py-4 text-right">Total</th>
+                                            <th class="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 text-sm">
+                                        <tr v-for="est in filteredEstimates" :key="est.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-6 py-4 font-medium text-gray-900">{{ est.estimateNumber || 'EST-00' + est.id }}</td>
+                                            <td class="px-6 py-4">
+                                                <div class="text-gray-900 font-medium">{{ est.customerName || 'Walk-in Customer' }}</div>
+                                                <div class="text-gray-500 text-xs">{{ est.customerPhone }}</div>
+                                            </td>
+                                            <td class="px-6 py-4 text-right font-medium text-gray-900">{{ formatCurrency(est.finalTotal) }}</td>
+                                            <td class="px-6 py-4 text-right print-hide">
+                                                <div class="flex items-center justify-end gap-3">
+                                                    <button @click="shareEstimate(est)" class="text-gray-400 hover:text-green-500 transition-colors" title="Share via WhatsApp">
+                                                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                                    </button>
+                                                    <button @click="printEstimate(est)" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Print/Download PDF">
+                                                        <i data-lucide="printer" class="w-4 h-4"></i>
+                                                    </button>
+                                                    <button @click="openEditForm(est)" class="text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
+                                                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                                    </button>
+                                                    <button @click="deleteEstimate(est.id)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
+                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Catalog (Products & Categories) Tab -->
+                    <div v-if="currentTab === 'catalog' && hasBusinessProfile" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <!-- Categories Sidebar -->
+                        <div class="lg:col-span-1 space-y-4">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+                                <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                                    <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wider">Categories</h3>
+                                </div>
+                                <div class="p-3 border-b border-gray-100">
+                                    <form @submit.prevent="createCategory" class="flex gap-2">
+                                        <input v-model="newCategoryName" type="text" placeholder="New Category..." required class="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                                        <button type="submit" class="bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-gray-800" :disabled="loadingCat"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                                    </form>
+                                </div>
+                                <div class="overflow-y-auto flex-1 p-2 space-y-1 custom-scrollbar">
+                                    <div v-if="categories.length === 0" class="text-xs text-gray-500 p-2 text-center">No categories yet.</div>
+                                    <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat)" :class="selectedCategoryId === cat.id ? 'bg-blue-50 text-blue-700 font-semibold border-blue-200' : 'text-gray-600 hover:bg-gray-50 border-transparent'" class="w-full text-left px-3 py-2 rounded-md text-sm transition-colors border">
+                                        {{ cat.name }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Products Area -->
+                        <div class="lg:col-span-3">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 h-[600px] flex flex-col">
+                                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                                    <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wider">
+                                        Products <span v-if="selectedCategoryName" class="text-blue-600 lowercase tracking-normal">in {{ selectedCategoryName }}</span>
+                                    </h3>
+                                    <button v-if="selectedCategoryId" @click="showAddProduct = true" class="text-xs bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1">
+                                        <i data-lucide="plus" class="w-3 h-3"></i> Add Product
+                                    </button>
+                                </div>
+
+                                <div v-if="!selectedCategoryId" class="flex-1 flex items-center justify-center text-gray-400 p-6 text-center">
+                                    <div>
+                                        <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                        <p>Select a category from the left to view its products.</p>
+                                    </div>
+                                </div>
+                                
+                                <div v-else class="flex-1 overflow-auto custom-scrollbar p-0">
+                                    <!-- Add Product Inline Form -->
+                                    <div v-if="showAddProduct" class="p-4 bg-blue-50/50 border-b border-gray-200 flex gap-3 items-end">
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                                            <input v-model="newProduct.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
+                                        </div>
+                                        <div class="w-24">
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                                            <input v-model.number="newProduct.price" type="number" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
+                                        </div>
+                                        <div class="w-24">
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+                                            <input v-model="newProduct.unit" type="text" placeholder="e.g. Hr, Box" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button @click="createProduct" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium" :disabled="loadingProd">Save</button>
+                                            <button @click="showAddProduct = false" class="bg-white border border-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-50 text-gray-700">Cancel</button>
+                                        </div>
+                                    </div>
+
+                                    <table v-if="products.length > 0" class="w-full text-left">
+                                        <thead class="bg-gray-50/50 sticky top-0 border-b border-gray-100">
+                                            <tr class="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                                                <th class="px-6 py-3">Name</th>
+                                                <th class="px-6 py-3">Unit</th>
+                                                <th class="px-6 py-3">Price</th>
+                                                <th class="px-6 py-3 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <tr v-for="p in products" :key="p.id" class="hover:bg-gray-50 text-sm">
+                                                <td class="px-6 py-3 font-medium text-gray-900">{{ p.name }}</td>
+                                                <td class="px-6 py-3 text-gray-600">{{ p.unit }}</td>
+                                                <td class="px-6 py-3 text-gray-900 font-medium">{{ formatCurrency(p.price) }}</td>
+                                                <td class="px-6 py-3 text-right">
+                                                    <button @click="deleteProduct(p.id)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div v-else-if="!showAddProduct" class="p-8 text-center text-gray-500 text-sm">
+                                        No products found in this category.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Business Profile Tab -->
+                    <div v-if="currentTab === 'profile'" class="max-w-2xl mx-auto">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-lg font-bold text-gray-900">Business Profile</h2>
+                                    <p class="text-sm text-gray-500 mt-1">Manage your company details for estimates.</p>
+                                </div>
+                                <button v-if="hasBusinessProfile && !isEditingProfile" @click="isEditingProfile = true" class="text-sm bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i> Edit
+                                </button>
+                            </div>
+                            
+                            <!-- Read Only View -->
+                            <div v-if="hasBusinessProfile && !isEditingProfile" class="p-6">
+                                <div class="flex flex-col sm:flex-row items-start gap-6">
+                                    <div v-if="businessInfo.logo" class="w-24 h-24 rounded-lg border border-gray-200 overflow-hidden flex shrink-0 items-center justify-center bg-white shadow-sm">
+                                        <img :src="businessInfo.logo" alt="Logo" class="max-w-full max-h-full object-contain p-1">
+                                    </div>
+                                    <div v-else class="w-24 h-24 rounded-lg border border-dashed border-gray-300 flex items-center justify-center bg-gray-50 shrink-0 text-gray-400">
+                                        <i data-lucide="image" class="w-8 h-8 opacity-50"></i>
+                                    </div>
+                                    <div class="space-y-4 flex-1 w-full">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-gray-900">{{ businessInfo.shopName }}</h3>
+                                            <p class="text-gray-500 text-sm whitespace-pre-wrap mt-1 leading-relaxed">{{ businessInfo.shopAddress || 'No address provided' }}</p>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                                            <div>
+                                                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Phone Number</p>
+                                                <p class="text-gray-900 font-medium">{{ businessInfo.phone || 'N/A' }}</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">GST / Tax Number</p>
+                                                <p class="text-gray-900 font-medium">{{ businessInfo.gstNumber || 'N/A' }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Edit Form View -->
+                            <div v-else class="p-6">
+                                <form @submit.prevent="saveBusiness" class="space-y-5">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Business Logo</label>
+                                        <div class="flex items-center gap-4">
+                                            <div v-if="businessFormData.logo" class="w-16 h-16 rounded border border-gray-200 overflow-hidden flex shrink-0 items-center justify-center bg-white relative group shadow-sm">
+                                                <img :src="businessFormData.logo" class="max-w-full max-h-full object-contain p-1">
+                                                <button type="button" @click="businessFormData.logo = null" class="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" title="Remove Logo"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                                            </div>
+                                            <div class="flex-1">
+                                                <input type="file" accept="image/*" @change="handleLogoUpload" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
+                                                <p class="text-xs text-gray-400 mt-1">Recommended size: 250x100px. Max 1MB.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Shop/Business Name <span class="text-red-500">*</span></label>
+                                        <input v-model="businessFormData.shopName" type="text" required maxlength="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Shop Address</label>
+                                        <textarea v-model="businessFormData.shopAddress" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"></textarea>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                            <input v-model="businessFormData.phone" type="tel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">GST / Tax Number</label>
+                                            <input v-model="businessFormData.gstNumber" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                        </div>
+                                    </div>
+                                    <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
+                                        <span v-if="successMsg" class="text-green-600 text-sm font-medium flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Saved successfully</span>
+                                        <span v-else></span>
+                                        <div class="flex gap-3">
+                                            <button v-if="hasBusinessProfile" @click="isEditingProfile = false" type="button" class="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+                                            <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex items-center gap-2" :disabled="loading">
+                                                <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                                {{ loading ? 'Saving...' : 'Save Profile' }}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </form>
                             </div>
-                            <div class="overflow-y-auto flex-1 p-2 space-y-1 custom-scrollbar">
-                                <div v-if="categories.length === 0" class="text-xs text-gray-500 p-2 text-center">No categories yet.</div>
-                                <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat)" :class="selectedCategoryId === cat.id ? 'bg-blue-50 text-blue-700 font-semibold border-blue-200' : 'text-gray-600 hover:bg-gray-50 border-transparent'" class="w-full text-left px-3 py-2 rounded-md text-sm transition-colors border">
-                                    {{ cat.name }}
-                                </button>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Products Area -->
-                    <div class="lg:col-span-3">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 h-[600px] flex flex-col">
-                            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                                <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wider">
-                                    Products <span v-if="selectedCategoryName" class="text-blue-600 lowercase tracking-normal">in {{ selectedCategoryName }}</span>
-                                </h3>
-                                <button v-if="selectedCategoryId" @click="showAddProduct = true" class="text-xs bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1">
-                                    <i data-lucide="plus" class="w-3 h-3"></i> Add Product
-                                </button>
-                            </div>
-
-                            <div v-if="!selectedCategoryId" class="flex-1 flex items-center justify-center text-gray-400 p-6 text-center">
-                                <div>
-                                    <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                                    <p>Select a category from the left to view its products.</p>
-                                </div>
-                            </div>
-                            
-                            <div v-else class="flex-1 overflow-auto custom-scrollbar p-0">
-                                <!-- Add Product Inline Form -->
-                                <div v-if="showAddProduct" class="p-4 bg-blue-50/50 border-b border-gray-200 flex gap-3 items-end">
-                                    <div class="flex-1">
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                                        <input v-model="newProduct.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
-                                    </div>
-                                    <div class="w-24">
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Price</label>
-                                        <input v-model.number="newProduct.price" type="number" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
-                                    </div>
-                                    <div class="w-24">
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">Unit</label>
-                                        <input v-model="newProduct.unit" type="text" placeholder="e.g. Hr, Box" class="w-full px-3 py-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500">
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button @click="createProduct" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium" :disabled="loadingProd">Save</button>
-                                        <button @click="showAddProduct = false" class="bg-white border border-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-50 text-gray-700">Cancel</button>
-                                    </div>
-                                </div>
-
-                                <table v-if="products.length > 0" class="w-full text-left">
-                                    <thead class="bg-gray-50/50 sticky top-0 border-b border-gray-100">
-                                        <tr class="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                                            <th class="px-6 py-3">Name</th>
-                                            <th class="px-6 py-3">Unit</th>
-                                            <th class="px-6 py-3">Price</th>
-                                            <th class="px-6 py-3 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <tr v-for="p in products" :key="p.id" class="hover:bg-gray-50 text-sm">
-                                            <td class="px-6 py-3 font-medium text-gray-900">{{ p.name }}</td>
-                                            <td class="px-6 py-3 text-gray-600">{{ p.unit }}</td>
-                                            <td class="px-6 py-3 text-gray-900 font-medium">{{ formatCurrency(p.price) }}</td>
-                                            <td class="px-6 py-3 text-right">
-                                                <button @click="deleteProduct(p.id)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <div v-else-if="!showAddProduct" class="p-8 text-center text-gray-500 text-sm">
-                                    No products found in this category.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- 3. Business Profile Tab -->
-                <div v-if="currentTab === 'profile'" class="max-w-2xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-900">Business Profile</h2>
-                                <p class="text-sm text-gray-500 mt-1">Manage your company details for estimates.</p>
-                            </div>
-                            <button v-if="hasBusinessProfile && !isEditingProfile" @click="isEditingProfile = true" class="text-sm bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i> Edit
+                <!-- Estimate Form View -->
+                <div v-else-if="view === 'estimate-form'" key="form" class="max-w-4xl mx-auto pb-12 space-y-6">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <button @click="view = 'dashboard'" class="p-2 -ml-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors print-hide">
+                                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                            </button>
+                            <h2 class="text-2xl font-bold text-gray-900">{{ formMode === 'create' ? 'Create Estimate' : 'Edit Estimate' }}</h2>
+                        </div>
+                        <div class="flex gap-3 print-hide">
+                            <button @click="view = 'dashboard'" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button @click="saveEstimate(true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2" :disabled="saving">
+                                <i v-if="saving" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                <i v-else data-lucide="printer" class="w-4 h-4"></i>
+                                Save & Print
+                            </button>
+                            <button @click="saveEstimate(false)" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2" :disabled="saving">
+                                <i v-if="saving" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                <i v-else data-lucide="save" class="w-4 h-4"></i>
+                                Save
                             </button>
                         </div>
-                        
-                        <!-- Read Only View -->
-                        <div v-if="hasBusinessProfile && !isEditingProfile" class="p-6">
-                            <div class="flex flex-col sm:flex-row items-start gap-6">
-                                <div v-if="businessInfo.logo" class="w-24 h-24 rounded-lg border border-gray-200 overflow-hidden flex shrink-0 items-center justify-center bg-white shadow-sm">
-                                    <img :src="businessInfo.logo" alt="Logo" class="max-w-full max-h-full object-contain p-1">
-                                </div>
-                                <div v-else class="w-24 h-24 rounded-lg border border-dashed border-gray-300 flex items-center justify-center bg-gray-50 shrink-0 text-gray-400">
-                                    <i data-lucide="image" class="w-8 h-8 opacity-50"></i>
-                                </div>
-                                <div class="space-y-4 flex-1 w-full">
-                                    <div>
-                                        <h3 class="text-xl font-bold text-gray-900">{{ businessInfo.shopName }}</h3>
-                                        <p class="text-gray-500 text-sm whitespace-pre-wrap mt-1 leading-relaxed">{{ businessInfo.shopAddress || 'No address provided' }}</p>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                                        <div>
-                                            <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Phone Number</p>
-                                            <p class="text-gray-900 font-medium">{{ businessInfo.phone || 'N/A' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">GST / Tax Number</p>
-                                            <p class="text-gray-900 font-medium">{{ businessInfo.gstNumber || 'N/A' }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Edit Form View -->
-                        <div v-else class="p-6">
-                            <form @submit.prevent="saveBusiness" class="space-y-5">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Business Logo</label>
-                                    <div class="flex items-center gap-4">
-                                        <div v-if="businessFormData.logo" class="w-16 h-16 rounded border border-gray-200 overflow-hidden flex shrink-0 items-center justify-center bg-white relative group shadow-sm">
-                                            <img :src="businessFormData.logo" class="max-w-full max-h-full object-contain p-1">
-                                            <button type="button" @click="businessFormData.logo = null" class="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" title="Remove Logo"><i data-lucide="trash" class="w-4 h-4"></i></button>
-                                        </div>
-                                        <div class="flex-1">
-                                            <input type="file" accept="image/*" @change="handleLogoUpload" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
-                                            <p class="text-xs text-gray-400 mt-1">Recommended size: 250x100px. Max 1MB.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Shop/Business Name <span class="text-red-500">*</span></label>
-                                    <input v-model="businessFormData.shopName" type="text" required maxlength="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Shop Address</label>
-                                    <textarea v-model="businessFormData.shopAddress" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"></textarea>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                        <input v-model="businessFormData.phone" type="tel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">GST / Tax Number</label>
-                                        <input v-model="businessFormData.gstNumber" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                                    </div>
-                                </div>
-                                <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
-                                    <span v-if="successMsg" class="text-green-600 text-sm font-medium flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Saved successfully</span>
-                                    <span v-else></span>
-                                    <div class="flex gap-3">
-                                        <button v-if="hasBusinessProfile" @click="isEditingProfile = false" type="button" class="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">Cancel</button>
-                                        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors flex items-center gap-2" :disabled="loading">
-                                            <i v-if="loading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                                            {{ loading ? 'Saving...' : 'Save Profile' }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
                     </div>
-                </div>
 
-            </div>
-
-            <!-- Estimate Form View -->
-            <div v-else-if="view === 'estimate-form'" key="form" class="max-w-4xl mx-auto pb-12 space-y-6">
-                <!-- Header -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <button @click="view = 'dashboard'" class="p-2 -ml-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors print-hide">
-                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        </button>
-                        <h2 class="text-2xl font-bold text-gray-900">{{ formMode === 'create' ? 'Create Estimate' : 'Edit Estimate' }}</h2>
+                    <div v-if="errorMsg" class="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i><p>{{ errorMsg }}</p>
                     </div>
-                    <div class="flex gap-3 print-hide">
-                        <button @click="view = 'dashboard'" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
-                        <button @click="saveEstimate(true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2" :disabled="saving">
-                            <i v-if="saving" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                            <i v-else data-lucide="printer" class="w-4 h-4"></i>
-                            Save & Print
-                        </button>
-                        <button @click="saveEstimate(false)" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2" :disabled="saving">
-                            <i v-if="saving" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                            <i v-else data-lucide="save" class="w-4 h-4"></i>
-                            Save
-                        </button>
-                    </div>
-                </div>
 
-                <div v-if="errorMsg" class="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm flex items-start gap-2">
-                    <i data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i><p>{{ errorMsg }}</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Column 1: Config (Customer, Notes, Category Discounts) -->
-                    <div class="md:col-span-1 space-y-6">
-                        
-                        <!-- Customer Details -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Customer Info</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Customer Name</label>
-                                    <input v-model="formData.customerName" type="text" placeholder="John Doe" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
-                                    <input v-model="formData.customerPhone" type="tel" placeholder="+1 234 567 890" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Additional Discount (Overall)</label>
-                                    <div class="flex">
-                                        <input v-model.number="formData.additionalDiscount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:ring-1 focus:ring-blue-500 outline-none text-sm border-r-0">
-                                        <select v-model="formData.additionalDiscountType" class="bg-gray-50 border border-gray-300 rounded-r-md px-2 text-sm outline-none">
-                                            <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Tax Amount (Flat)</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm">₹</span>
-                                        <input v-model.number="formData.taxAmount" type="number" min="0" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Notes</h3>
-                            <div class="space-y-3">
-                                <div v-for="(note, idx) in formData.notes" :key="idx" class="flex gap-2">
-                                    <input v-model="note.note" type="text" placeholder="Note description..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
-                                    <button @click="removeNote(idx)" type="button" class="print-hide p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-md border border-gray-200"><i data-lucide="x" class="w-4 h-4"></i></button>
-                                </div>
-                                <button @click="addNote" type="button" class="print-hide text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Note</button>
-                            </div>
-                        </div>
-
-                        <!-- Category Discounts -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mt-6">
-                            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Category Discounts</h3>
-                            <div class="space-y-3">
-                                <div v-for="(catDisc, idx) in formData.categoryDiscounts" :key="idx" class="flex gap-2 items-center">
-                                    <select v-model="catDisc.categoryId" class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md outline-none text-sm truncate">
-                                        <option value="" disabled>Category...</option>
-                                        <option v-for="cat in activeCategoriesInItems" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                                    </select>
-                                    <div class="flex shrink-0">
-                                        <input v-model.number="catDisc.discount" type="number" min="0" placeholder="0" class="w-16 px-2 py-2 border border-gray-300 rounded-l-md outline-none text-sm border-r-0">
-                                        <select v-model="catDisc.discountType" class="bg-gray-50 border border-gray-300 rounded-r-md px-1 py-2 text-sm outline-none">
-                                            <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
-                                        </select>
-                                    </div>
-                                    <button @click="removeCategoryDiscount(idx)" type="button" class="print-hide shrink-0 p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-md border border-gray-200"><i data-lucide="x" class="w-4 h-4"></i></button>
-                                </div>
-                                <button @click="addCategoryDiscount" type="button" class="print-hide text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Category Discount</button>
-                            </div>
-                        </div>
-
-                    </div> <!-- End Column 1 -->
-
-                    <!-- Column 2: Line Items & Summary -->
-                    <div class="md:col-span-2 space-y-6">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
-                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Line Items</h3>
-                                <button @click="addItem" type="button" class="print-hide text-xs bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1">
-                                    <i data-lucide="plus" class="w-3 h-3"></i> Add Row
-                                </button>
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Column 1: Config (Customer, Notes, Category Discounts) -->
+                        <div class="md:col-span-1 space-y-6">
                             
-                            <div class="overflow-x-auto custom-scrollbar">
-                                <table class="w-full text-left table-fixed min-w-[600px]">
-                                    <thead>
-                                        <tr class="bg-white border-b border-gray-200 text-xs text-gray-500">
-                                            <th class="px-4 py-3 font-medium w-[28%]">Product / Service</th>
-                                            <th class="px-2 py-3 font-medium w-[12%]">Qty</th>
-                                            <th class="px-2 py-3 font-medium w-[18%]">Price</th>
-                                            <th class="px-2 py-3 font-medium w-[22%]">Discount</th>
-                                            <th class="px-4 py-3 font-medium text-right w-[20%]">Total</th>
-                                            <th class="w-10 print-hide"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100 bg-white">
-                                        <tr v-if="formData.items.length === 0">
-                                            <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No items added. Click 'Add Row' to start.</td>
-                                        </tr>
-                                        <tr v-for="(item, idx) in formData.items" :key="idx" class="group">
-                                            <td class="px-4 py-3 overflow-hidden">
-                                                <select v-model="item.productId" @change="onProductSelect(item)" class="w-full px-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white cursor-pointer text-ellipsis overflow-hidden">
-                                                    <option value="" disabled>Select product...</option>
-                                                    <optgroup v-for="(group, catName) in groupedAvailableProducts" :key="catName" :label="catName">
-                                                        <option v-for="p in group" :key="p.id" :value="p.id">{{ p.name }}</option>
-                                                    </optgroup>
-                                                </select>
-                                            </td>
-                                            <td class="px-2 py-3">
-                                                <input v-model.number="item.quantity" type="number" min="1" class="w-full px-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm text-center bg-transparent group-hover:bg-white">
-                                            </td>
-                                            <td class="px-2 py-3">
-                                                <div class="relative flex items-center">
-                                                    <span class="absolute left-2 text-gray-400 text-sm">₹</span>
-                                                    <input v-model.number="item.unitPrice" type="number" min="0" step="0.01" class="w-full pl-6 pr-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white">
-                                                </div>
-                                            </td>
-                                            <td class="px-2 py-3">
-                                                <div class="flex flex-col gap-1">
-                                                    <div v-if="hasActiveCategoryDiscount(item) && !item.overrideCategoryDiscount" class="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100 text-xs font-medium" title="Category discount applied">
-                                                        <i data-lucide="tag" class="w-3 h-3 shrink-0"></i>
-                                                        <span class="truncate">{{ getCategoryDiscountForProduct(item.productId).discount }}{{ getCategoryDiscountForProduct(item.productId).discountType === 'PERCENTAGE' ? '%' : ' Flat' }}</span>
+                            <!-- Customer Details -->
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Customer Info</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Customer Name</label>
+                                        <input v-model="formData.customerName" type="text" placeholder="John Doe" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
+                                        <input v-model="formData.customerPhone" type="tel" placeholder="+1 234 567 890" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Additional Discount (Overall)</label>
+                                        <div class="flex">
+                                            <input v-model.number="formData.additionalDiscount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:ring-1 focus:ring-blue-500 outline-none text-sm border-r-0">
+                                            <select v-model="formData.additionalDiscountType" class="bg-gray-50 border border-gray-300 rounded-r-md px-2 text-sm outline-none">
+                                                <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Tax Amount (Flat)</label>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm">₹</span>
+                                            <input v-model.number="formData.taxAmount" type="number" min="0" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Notes</h3>
+                                <div class="space-y-3">
+                                    <div v-for="(note, idx) in formData.notes" :key="idx" class="flex gap-2">
+                                        <input v-model="note.note" type="text" placeholder="Note description..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-sm">
+                                        <button @click="removeNote(idx)" type="button" class="print-hide p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-md border border-gray-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <button @click="addNote" type="button" class="print-hide text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Note</button>
+                                </div>
+                            </div>
+
+                            <!-- Category Discounts -->
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mt-6">
+                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Category Discounts</h3>
+                                <div class="space-y-3">
+                                    <div v-for="(catDisc, idx) in formData.categoryDiscounts" :key="idx" class="flex gap-2 items-center">
+                                        <select v-model="catDisc.categoryId" class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md outline-none text-sm truncate">
+                                            <option value="" disabled>Category...</option>
+                                            <option v-for="cat in activeCategoriesInItems" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                                        </select>
+                                        <div class="flex shrink-0">
+                                            <input v-model.number="catDisc.discount" type="number" min="0" placeholder="0" class="w-16 px-2 py-2 border border-gray-300 rounded-l-md outline-none text-sm border-r-0">
+                                            <select v-model="catDisc.discountType" class="bg-gray-50 border border-gray-300 rounded-r-md px-1 py-2 text-sm outline-none">
+                                                <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
+                                            </select>
+                                        </div>
+                                        <button @click="removeCategoryDiscount(idx)" type="button" class="print-hide shrink-0 p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-md border border-gray-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <button @click="addCategoryDiscount" type="button" class="print-hide text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Category Discount</button>
+                                </div>
+                            </div>
+
+                        </div> <!-- End Column 1 -->
+
+                        <!-- Column 2: Line Items & Summary -->
+                        <div class="md:col-span-2 space-y-6">
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div class="p-5 border-b border-gray-200 bg-gray-50/50">
+                                    <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Line Items</h3>
+                                </div>
+                                
+                                <div class="overflow-x-auto custom-scrollbar">
+                                    <table class="w-full text-left table-fixed min-w-[600px]">
+                                        <thead>
+                                            <tr class="bg-white border-b border-gray-200 text-xs text-gray-500">
+                                                <th class="px-4 py-3 font-medium w-[28%]">Product / Service</th>
+                                                <th class="px-2 py-3 font-medium w-[12%]">Qty</th>
+                                                <th class="px-2 py-3 font-medium w-[18%]">Price</th>
+                                                <th class="px-2 py-3 font-medium w-[22%]">Discount</th>
+                                                <th class="px-4 py-3 font-medium text-right w-[20%]">Total</th>
+                                                <th class="w-10 print-hide"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 bg-white">
+                                            <tr v-if="formData.items.length === 0">
+                                                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No items added. Use the button below to add your first row.</td>
+                                            </tr>
+                                            <tr v-for="(item, idx) in formData.items" :key="idx" class="group">
+                                                <td class="px-4 py-3 overflow-hidden">
+                                                    <select v-model="item.productId" @change="onProductSelect(item)" class="w-full px-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white cursor-pointer text-ellipsis overflow-hidden">
+                                                        <option value="" disabled>Select product...</option>
+                                                        <optgroup v-for="(group, catName) in groupedAvailableProducts" :key="catName" :label="catName">
+                                                            <option v-for="p in group" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                                        </optgroup>
+                                                    </select>
+                                                </td>
+                                                <td class="px-2 py-3">
+                                                    <input v-model.number="item.quantity" type="number" min="1" class="w-full px-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm text-center bg-transparent group-hover:bg-white">
+                                                </td>
+                                                <td class="px-2 py-3">
+                                                    <div class="relative flex items-center">
+                                                        <span class="absolute left-2 text-gray-400 text-sm">₹</span>
+                                                        <input v-model.number="item.unitPrice" type="number" min="0" step="0.01" class="w-full pl-6 pr-2 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white">
                                                     </div>
-                                                    <div v-else class="flex gap-1">
-                                                        <input v-model.number="item.discount" type="number" min="0" class="w-1/2 px-1 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white">
-                                                        <select v-model="item.discountType" class="w-1/2 px-1 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-xs bg-transparent group-hover:bg-white shrink-0">
-                                                            <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
-                                                        </select>
-                                                    </div>
-                                                    <div v-if="hasActiveCategoryDiscount(item)" class="flex flex-col gap-1 mt-1 print-hide">
-                                                        <div class="flex items-center gap-1">
-                                                            <input type="checkbox" v-model="item.overrideCategoryDiscount" :id="'override-'+idx" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3 w-3 shrink-0">
-                                                            <label :for="'override-'+idx" class="text-[10px] text-gray-500 cursor-pointer leading-tight">Override</label>
+                                                </td>
+                                                <td class="px-2 py-3">
+                                                    <div class="flex flex-col gap-1">
+                                                        <div v-if="hasActiveCategoryDiscount(item) && !item.overrideCategoryDiscount" class="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100 text-xs font-medium" title="Category discount applied">
+                                                            <i data-lucide="tag" class="w-3 h-3 shrink-0"></i>
+                                                            <span class="truncate">{{ getCategoryDiscountForProduct(item.productId).discount }}{{ getCategoryDiscountForProduct(item.productId).discountType === 'PERCENTAGE' ? '%' : ' Flat' }}</span>
                                                         </div>
-                                                        <div v-if="item.overrideCategoryDiscount" class="text-[10px] text-amber-600 flex items-center gap-1 leading-tight font-medium">
-                                                            <i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i> Manual override
+                                                        <div v-else class="flex gap-1">
+                                                            <input v-model.number="item.discount" type="number" min="0" class="w-1/2 px-1 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-sm bg-transparent group-hover:bg-white">
+                                                            <select v-model="item.discountType" class="w-1/2 px-1 py-1.5 border border-transparent group-hover:border-gray-300 rounded outline-none text-xs bg-transparent group-hover:bg-white shrink-0">
+                                                                <option value="PERCENTAGE">%</option><option value="FLAT">Flat</option>
+                                                            </select>
+                                                        </div>
+                                                        <div v-if="hasActiveCategoryDiscount(item)" class="flex flex-col gap-1 mt-1 print-hide">
+                                                            <div class="flex items-center gap-1">
+                                                                <input type="checkbox" v-model="item.overrideCategoryDiscount" :id="'override-'+idx" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3 w-3 shrink-0">
+                                                                <label :for="'override-'+idx" class="text-[10px] text-gray-500 cursor-pointer leading-tight">Override</label>
+                                                            </div>
+                                                            <div v-if="item.overrideCategoryDiscount" class="text-[10px] text-amber-600 flex items-center gap-1 leading-tight font-medium">
+                                                                <i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i> Manual override
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td class="px-4 py-3 text-right font-medium text-gray-900 text-sm truncate">
+                                                    {{ formatCurrency(calculateRowTotal(item)) }}
+                                                </td>
+                                                <td class="px-2 py-3 text-right print-hide">
+                                                    <button @click="removeItem(idx)" type="button" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                                                </td>
+                                        </tr>
+                                        <tr class="print-hide bg-gray-50/60 border-t border-gray-200">
+                                            <td colspan="6" class="px-4 py-3">
+                                                <div class="flex justify-center sm:justify-end">
+                                                    <button @click="addItem" type="button" class="text-xs bg-white border border-gray-300 shadow-sm px-3 py-1.5 rounded-md font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1">
+                                                        <i data-lucide="plus" class="w-3 h-3"></i> Add Row
+                                                    </button>
                                                 </div>
-                                            </td>
-                                            <td class="px-4 py-3 text-right font-medium text-gray-900 text-sm truncate">
-                                                {{ formatCurrency(calculateRowTotal(item)) }}
-                                            </td>
-                                            <td class="px-2 py-3 text-right print-hide">
-                                                <button @click="removeItem(idx)" type="button" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"><i data-lucide="trash" class="w-4 h-4"></i></button>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                            </div>
 
-                        <!-- Summary Card -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 ml-auto w-full max-w-sm">
-                            <div class="space-y-3 text-sm">
-                                <div class="flex justify-between text-gray-600">
-                                    <span>Subtotal</span><span class="font-medium text-gray-900">{{ formatCurrency(totals.subtotal) }}</span>
-                                </div>
-                                <div class="flex justify-between text-gray-600">
-                                    <span>Item Discounts</span><span class="text-red-500">- {{ formatCurrency(totals.itemDiscounts) }}</span>
-                                </div>
-                                <div class="flex justify-between text-gray-600" v-if="totals.additionalDiscountValue > 0">
-                                    <span>Additional Discount</span><span class="text-red-500">- {{ formatCurrency(totals.additionalDiscountValue) }}</span>
-                                </div>
-                                <div class="flex justify-between text-gray-600">
-                                    <span>Tax</span><span>+ {{ formatCurrency(formData.taxAmount || 0) }}</span>
-                                </div>
-                                <div class="pt-3 border-t border-gray-200 flex justify-between items-center">
-                                    <span class="text-base font-bold text-gray-900">Total Amount</span>
-                                    <span class="text-xl font-bold text-blue-600">{{ formatCurrency(totals.finalAmount) }}</span>
+                            <!-- Summary Card -->
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 ml-auto w-full max-w-sm">
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>Subtotal</span><span class="font-medium text-gray-900">{{ formatCurrency(totals.subtotal) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>Item Discounts</span><span class="text-red-500">- {{ formatCurrency(totals.itemDiscounts) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-600" v-if="totals.additionalDiscountValue > 0">
+                                        <span>Additional Discount</span><span class="text-red-500">- {{ formatCurrency(totals.additionalDiscountValue) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>Tax</span><span>+ {{ formatCurrency(formData.taxAmount || 0) }}</span>
+                                    </div>
+                                    <div class="pt-3 border-t border-gray-200 flex justify-between items-center">
+                                        <span class="text-base font-bold text-gray-900">Total Amount</span>
+                                        <span class="text-xl font-bold text-blue-600">{{ formatCurrency(totals.finalAmount) }}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div> <!-- End Column 2 -->
+                        </div> <!-- End Column 2 -->
 
+                    </div>
                 </div>
-            </div>
-        </transition>
-
+            </transition>
+        </template>
     </main>
 </div>
 
@@ -719,9 +734,10 @@ let MOCK_ESTIMATES = [
 createApp({
     setup() {
         // App State
+        const isInitializing = ref(true); // Added for session check
         const isDemoMode = ref(false); // Default to Live Server
         const showSettings = ref(false);
-        const apiBaseUrl = ref(window.location.origin);
+        const apiBaseUrl = ref(window.location.origin); // Switched to window origin
         const view = ref('auth'); // 'auth', 'dashboard', 'estimate-form'
         const authMode = ref('login'); // 'login', 'signup'
         const currentTab = ref('estimates'); // 'estimates', 'catalog', 'profile'
@@ -950,27 +966,84 @@ createApp({
             closeConfirm();
         };
 
+        let refreshTokenPromise = null;
+
+        const tryRefreshToken = async () => {
+            if (isDemoMode.value) return false;
+            if (!refreshTokenPromise) {
+                refreshTokenPromise = (async () => {
+                    try {
+                        const refreshRes = await fetch(`${apiBaseUrl.value}/api/auth/refresh-token`, {
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                        return refreshRes.ok;
+                    } catch (e) {
+                        return false;
+                    } finally {
+                        refreshTokenPromise = null;
+                    }
+                })();
+            }
+            return refreshTokenPromise;
+        };
+
+        const authenticatedFetch = async (endpoint, options = {}, retryOnUnauthorized = true) => {
+            const headers = { ...(options.headers || {}) };
+            if (options.body !== undefined && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            const response = await fetch(`${apiBaseUrl.value}${endpoint}`, {
+                ...options,
+                credentials: 'include',
+                headers
+            });
+
+            if (response.status === 401 && retryOnUnauthorized) {
+                const refreshed = await tryRefreshToken();
+                if (refreshed) {
+                    return authenticatedFetch(endpoint, options, false);
+                }
+
+                logout(true);
+                throw new Error("Session expired.");
+            }
+
+            return response;
+        };
+
         // HTTP Wrapper
         const apiFetch = async (endpoint, options = {}) => {
             if(isDemoMode.value) return null; // Demo interception handled directly in actions
-            const url = `${apiBaseUrl.value}${endpoint}`;
             try {
-                const res = await fetch(url, {
-                    ...options,
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
-                });
+                const res = await authenticatedFetch(endpoint, options);
                 if(!res.ok) {
-                    if(res.status === 401) { 
-                        logout(true); // skip calling signout API to prevent loop
-                        throw new Error("Session expired."); 
-                    }
                     const err = await res.json().catch(()=>({}));
                     throw new Error(err.description || err.message || `HTTP Error ${res.status}`);
                 }
                 const text = await res.text();
                 return text ? JSON.parse(text) : {};
             } catch(e) { throw e; }
+        };
+
+        // --- SESSION VERIFICATION ---
+        const checkSession = async () => {
+            if (isDemoMode.value) {
+                isInitializing.value = false;
+                return;
+            }
+            try {
+                await loadBusinessProfile();
+                isAuthenticated.value = true;
+                view.value = 'dashboard';
+            } catch (e) {
+                // If it fails (like 401 Unauthorized), we safely fall back to auth view
+                isAuthenticated.value = false;
+                view.value = 'auth';
+            } finally {
+                isInitializing.value = false;
+            }
         };
 
         // --- AUTHENTICATION ---
@@ -1320,13 +1393,11 @@ createApp({
             
             try {
                 // Fetch the PDF using the secure fetch wrapper to handle auth cookies
-                const res = await fetch(`${apiBaseUrl.value}/api/estimates/${est.id}/pdf`, {
-                    method: 'GET',
-                    credentials: 'include' // Ensures the jwt cookie is sent
+                const res = await authenticatedFetch(`/api/estimates/${est.id}/pdf`, {
+                    method: 'GET'
                 });
                 
                 if (!res.ok) {
-                    if (res.status === 401) { logout(true); throw new Error("Session expired."); }
                     throw new Error(`HTTP Error ${res.status}: Failed to generate PDF`);
                 }
                 
@@ -1362,6 +1433,7 @@ createApp({
             }
         };
 
+        const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
         const shareEstimate = async (est) => {
             if (isDemoMode.value) {
                 showMessage("Sharing is simulated in Demo Mode.", false);
@@ -1369,61 +1441,55 @@ createApp({
             }
             
             try {
-                const res = await fetch(`${apiBaseUrl.value}/api/estimates/${est.id}/pdf`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (!res.ok) {
-                    if (res.status === 401) { logout(true); throw new Error("Session expired."); }
-                    throw new Error(`HTTP Error ${res.status}: Failed to generate PDF`);
-                }
-                
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
+                const shareLinkResponse = await apiFetch(`/api/estimates/${est.id}/share-link`);
+                const pdfUrl = shareLinkResponse.url;
                 const fileName = `Estimate-${est.estimateNumber || est.id}.pdf`;
-
-                // Format message and phone
-                let phone = '';
-                if (est.customerPhone) {
-                    phone = est.customerPhone.replace(/[^\d+]/g, ''); // remove non-digits
-                    if (phone.startsWith('+')) phone = phone.substring(1);
-                }
-                
                 const textMsg = `Hello ${est.customerName || ''}, here is your estimate ${est.estimateNumber || ''} for ${formatCurrency(est.finalTotal)}.`;
+                const whatsappMessage = `${textMsg} Check this file: ${pdfUrl}`;
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
 
-                // 1. Try Native Web Share API with File attachment (Works great on Mobile iOS/Android)
-                if (navigator.share && navigator.canShare) {
-                    const file = new File([blob], fileName, { type: 'application/pdf' });
-                    if (navigator.canShare({ files: [file] })) {
-                        try {
-                            await navigator.share({
-                                files: [file],
-                                title: `Estimate ${est.estimateNumber || est.id}`,
-                                text: textMsg
-                            });
-                            return; // Successfully shared
-                        } catch (e) {
-                            console.log("Share dialog was cancelled or failed.", e);
-                            // Fallthrough to WhatsApp Web fallback below
+                if (isMobileDevice()) {
+                    const res = await fetch(pdfUrl, {
+                        method: 'GET'
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP Error ${res.status}: Failed to generate PDF`);
+                    }
+
+                    const blob = await res.blob();
+
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([blob], fileName, { type: 'application/pdf' });
+                        if (navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({
+                                    files: [file],
+                                    title: `Estimate ${est.estimateNumber || est.id}`,
+                                    text: textMsg
+                                });
+                                return;
+                            } catch (e) {
+                                console.log("Share dialog was cancelled or failed.", e);
+                            }
                         }
                     }
+
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.open(whatsappUrl, '_blank');
+                    setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+                    showMessage("Native file sharing is unavailable on this device. WhatsApp will open with a message and link; attach the downloaded PDF manually if needed.", false);
+                    return;
                 }
 
-                // 2. Fallback for Desktop/WhatsApp Web
-                // Download the file automatically so they have it ready to attach
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // Open WhatsApp link with pre-filled message
-                const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(textMsg + " (Please find the attached PDF document)")}`;
-                window.open(waUrl, '_blank');
-                
-                setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+                window.open(whatsappUrl, '_blank');
+                showMessage("Desktop WhatsApp can only send text and a link. Download and attach the PDF manually if you need to send the file itself.", false);
             } catch (e) {
                 showMessage("Failed to share PDF: " + e.message, true);
             }
@@ -1443,6 +1509,8 @@ createApp({
             // Automatically render icons for dynamically injected elements
             const observer = new MutationObserver(() => updateIcons());
             observer.observe(document.body, { childList: true, subtree: true });
+
+            checkSession();
         });
         
         watch(currentTab, (newTab) => {
@@ -1450,7 +1518,7 @@ createApp({
         });
 
         return {
-            isDemoMode, showSettings, apiBaseUrl, view, authMode, currentTab, loading, loadingCat, loadingProd, saving, errorMsg, successMsg, isAuthenticated, isAdmin, confirmDialog,
+            isInitializing, isDemoMode, showSettings, apiBaseUrl, view, authMode, currentTab, loading, loadingCat, loadingProd, saving, errorMsg, successMsg, isAuthenticated, isAdmin, confirmDialog,
             credentials, signupData, businessInfo, hasBusinessProfile, businessFormData, isEditingProfile, estimates, serverStats, categories, products, availableProducts, groupedAvailableProducts, activeCategoriesInItems,
             selectedCategoryId, selectedCategoryName, newCategoryName, showAddProduct, newProduct, formData, formMode, totals, searchQuery, filteredEstimates, dashboardStats,
             toggleSettings, signup, login, logout, saveBusiness, handleLogoUpload, loadEstimates, loadCategories, createCategory, selectCategory, createProduct, deleteProduct,

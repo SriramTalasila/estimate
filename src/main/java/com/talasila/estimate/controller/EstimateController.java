@@ -5,7 +5,9 @@ import com.talasila.estimate.dto.EstimateRequest;
 import com.talasila.estimate.dto.EstimateResponse;
 import com.talasila.estimate.dto.EstimateItemResponse;
 import com.talasila.estimate.dto.EstimateNoteResponse;
+import com.talasila.estimate.dto.ShareLinkResponse;
 import com.talasila.estimate.model.Estimate;
+import com.talasila.estimate.security.JwtUtils;
 import com.talasila.estimate.service.EstimateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -28,9 +31,11 @@ import java.util.stream.Collectors;
 public class EstimateController {
 
     private final EstimateService estimateService;
+    private final JwtUtils jwtUtils;
 
-    public EstimateController(EstimateService estimateService) {
+    public EstimateController(EstimateService estimateService, JwtUtils jwtUtils) {
         this.estimateService = estimateService;
+        this.jwtUtils = jwtUtils;
     }
 
     @PostMapping("/business/{businessId}/estimates")
@@ -87,6 +92,20 @@ public class EstimateController {
         headers.setContentDispositionFormData("inline", "estimate-" + estimateId + ".pdf");
         
         return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
+    @GetMapping("/estimates/{estimateId}/share-link")
+    @PreAuthorize("hasAnyRole('BUSINESS_OWNER', 'EMPLOYEE') and @businessSecurityService.isOwnerOfEstimate(authentication, #estimateId)")
+    @Operation(summary = "Generate public share link for estimate PDF")
+    public ResponseEntity<ShareLinkResponse> getEstimateShareLink(@PathVariable Long estimateId) {
+        String token = jwtUtils.generateEstimateShareToken(estimateId);
+        String shareUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/public/estimates/{estimateId}/pdf")
+                .queryParam("token", token)
+                .buildAndExpand(estimateId)
+                .toUriString();
+
+        return ResponseEntity.ok(new ShareLinkResponse(shareUrl));
     }
 
     private EstimateResponse mapToEstimateResponse(Estimate estimate) {

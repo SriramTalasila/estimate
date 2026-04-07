@@ -1446,7 +1446,14 @@ createApp({
                 const fileName = `Estimate-${est.estimateNumber || est.id}.pdf`;
                 const textMsg = `Hello ${est.customerName || ''}, here is your estimate ${est.estimateNumber || ''} for ${formatCurrency(est.finalTotal)}.`;
                 const whatsappMessage = `${textMsg} Check this file: ${pdfUrl}`;
-                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+                let phone = '';
+                if (est.customerPhone) {
+                    phone = est.customerPhone.replace(/[^\d+]/g, '');
+                    if (phone.startsWith('+')) phone = phone.substring(1);
+                }
+                const whatsappUrl = phone
+                    ? `https://wa.me/${phone}?text=${encodeURIComponent(whatsappMessage)}`
+                    : `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
 
                 if (isMobileDevice()) {
                     const res = await fetch(pdfUrl, {

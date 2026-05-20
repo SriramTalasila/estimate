@@ -1,6 +1,8 @@
 package com.talasila.estimate.repository;
 
 import com.talasila.estimate.model.Estimate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,7 @@ import java.util.List;
 @Repository
 public interface EstimateRepository extends JpaRepository<Estimate, Long> {
     List<Estimate> findByBusinessIdOrderByCreatedAtDesc(Long businessId);
+    Page<Estimate> findByBusinessIdOrderByCreatedAtDesc(Long businessId, Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(e.finalTotal), 0) FROM Estimate e WHERE e.business.id = :businessId AND e.createdAt >= :start AND e.createdAt < :end")
     BigDecimal sumFinalTotalByBusinessIdAndCreatedAtBetween(@Param("businessId") Long businessId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

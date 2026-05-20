@@ -31,7 +31,7 @@ public class Business {
     @Column(name = "gst_number")
     private String gstNumber;
 
-    @Column(name = "logo")
+    @Column(name = "logo", columnDefinition = "bytea")
     private byte[] logo;
 
     @OneToMany(mappedBy = "business", cascade = CascadeType.ALL)

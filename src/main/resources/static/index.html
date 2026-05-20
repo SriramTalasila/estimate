@@ -17,6 +17,17 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px;}
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
 
         @media print {
             body { background-color: white; }
@@ -259,7 +270,7 @@
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div v-if="loading" class="p-12 flex justify-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-600"></i></div>
                             
-                            <div v-else-if="filteredEstimates.length === 0" class="p-12 text-center text-gray-500">
+                            <div v-else-if="displayedEstimates.length === 0" class="p-12 text-center text-gray-500">
                                 <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
                                 </div>
@@ -279,7 +290,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 text-sm">
-                                        <tr v-for="est in filteredEstimates" :key="est.id" class="hover:bg-gray-50 transition-colors">
+                                        <tr v-for="est in displayedEstimates" :key="est.id" class="hover:bg-gray-50 transition-colors">
                                             <td class="px-6 py-4 font-medium text-gray-900">{{ est.estimateNumber || 'EST-00' + est.id }}</td>
                                             <td class="px-6 py-4">
                                                 <div class="text-gray-900 font-medium">{{ est.customerName || 'Walk-in Customer' }}</div>
@@ -305,6 +316,20 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            <div v-if="displayedEstimates.length > 0" class="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-gray-500">{{ paginationLabel }}</p>
+                                <div class="flex items-center gap-2 self-end sm:self-auto">
+                                    <button @click="goToPreviousEstimatePage" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50" :disabled="!canGoToPreviousEstimatePage">
+                                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                        Prev
+                                    </button>
+                                    <span class="min-w-[88px] text-center font-medium text-gray-600">{{ estimatePageDisplay }}</span>
+                                    <button @click="goToNextEstimatePage" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50" :disabled="!canGoToNextEstimatePage">
+                                        Next
+                                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -348,6 +373,10 @@
                                     <div>
                                         <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                                         <p>Select a category from the left to view its products.</p>
+                                        <button v-if="categories.length > 0" @click="selectCategory(categories[0])" class="mt-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                            Open First Category
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -771,6 +800,10 @@ createApp({
         const estimates = ref([]);
         const serverStats = ref({ today: 0, month: 0, year: 0 });
         const searchQuery = ref('');
+        const estimatePage = ref(0);
+        const estimatePageSize = ref(10);
+        const estimateTotalElements = ref(0);
+        const estimateTotalPages = ref(1);
         const categories = ref([]);
         const products = ref([]); // Products for currently selected category
         const availableProducts = ref([]); // All flat products needed for estimate dropdown
@@ -896,6 +929,27 @@ createApp({
                 (e.customerName && e.customerName.toLowerCase().includes(q)) ||
                 (e.customerPhone && e.customerPhone.toLowerCase().includes(q))
             );
+        });
+
+        const displayedEstimates = computed(() => filteredEstimates.value);
+        const estimatePageDisplay = computed(() => {
+            if (estimateTotalPages.value === 0) return 'Page 0 of 0';
+            return `Page ${estimatePage.value + 1} of ${Math.max(estimateTotalPages.value, 1)}`;
+        });
+        const canGoToPreviousEstimatePage = computed(() => estimatePage.value > 0);
+        const canGoToNextEstimatePage = computed(() => estimatePage.value + 1 < Math.max(estimateTotalPages.value, 1));
+        const paginationLabel = computed(() => {
+            if (displayedEstimates.value.length === 0) {
+                return 'No estimates to display';
+            }
+
+            if (isDemoMode.value || searchQuery.value.trim()) {
+                return `Showing ${displayedEstimates.value.length} estimate${displayedEstimates.value.length === 1 ? '' : 's'}`;
+            }
+
+            const start = estimatePage.value * estimatePageSize.value + 1;
+            const end = start + displayedEstimates.value.length - 1;
+            return `Showing ${start}-${end} of ${estimateTotalElements.value} estimates`;
         });
 
         const calculateRowTotal = (item) => {
@@ -1111,16 +1165,27 @@ createApp({
         };
 
         // --- ESTIMATES DATA ---
-        const loadEstimates = async () => {
+        const loadEstimates = async (page = estimatePage.value) => {
             if (!hasBusinessProfile.value) return;
             if (isDemoMode.value) {
                 estimates.value = [...MOCK_ESTIMATES];
+                estimatePage.value = 0;
+                estimateTotalElements.value = estimates.value.length;
+                estimateTotalPages.value = 1;
                 return;
             }
             loading.value = true;
             try {
-                const fetchedEstimates = await apiFetch(`/api/business/${businessInfo.value.id}/estimates`);
-                estimates.value = fetchedEstimates || [];
+                const params = new URLSearchParams({
+                    page: String(Math.max(page, 0)),
+                    size: String(estimatePageSize.value)
+                });
+                const fetchedEstimates = await apiFetch(`/api/business/${businessInfo.value.id}/estimates?${params.toString()}`);
+                estimates.value = fetchedEstimates?.content || [];
+                estimatePage.value = fetchedEstimates?.page || 0;
+                estimatePageSize.value = fetchedEstimates?.size || estimatePageSize.value;
+                estimateTotalElements.value = fetchedEstimates?.totalElements || 0;
+                estimateTotalPages.value = fetchedEstimates?.totalPages || 0;
                 
                 const stats = await apiFetch(`/api/business/${businessInfo.value.id}/estimates/stats`);
                 serverStats.value = {
@@ -1207,17 +1272,23 @@ createApp({
             if(!newCategoryName.value.trim() || !hasBusinessProfile.value) return;
             loadingCat.value = true;
             try {
+                const categoryName = newCategoryName.value.trim();
+                let createdCategory = null;
                 if(isDemoMode.value) {
                     await new Promise(r => setTimeout(r, 400));
-                    const newCat = { id: Date.now(), name: newCategoryName.value };
-                    MOCK_CATEGORIES.push(newCat); categories.value.push(newCat);
+                    createdCategory = { id: Date.now(), name: categoryName };
+                    MOCK_CATEGORIES.push(createdCategory);
                 } else {
-                    const res = await apiFetch(`/api/manage/business/${businessInfo.value.id}/categories`, {
-                        method: 'POST', body: JSON.stringify({ name: newCategoryName.value })
+                    createdCategory = await apiFetch(`/api/manage/business/${businessInfo.value.id}/categories`, {
+                        method: 'POST', body: JSON.stringify({ name: categoryName })
                     });
-                    categories.value.push(res);
                 }
+
+                categories.value.push(createdCategory);
+                categories.value.sort((a, b) => a.name.localeCompare(b.name));
                 newCategoryName.value = '';
+                await selectCategory(createdCategory);
+                showMessage(`Category "${createdCategory.name}" added.`, false);
             } catch(e) { showMessage("Failed to add category.", true); }
             finally { loadingCat.value = false; }
         };
@@ -1289,6 +1360,10 @@ createApp({
         // Tab Watcher
         watch(currentTab, (newTab) => {
             if(newTab === 'catalog') { loadCategories(); selectedCategoryId.value = null; products.value = []; }
+        });
+
+        watch(searchQuery, () => {
+            if (isDemoMode.value) return;
         });
 
         // --- ESTIMATE MANAGEMENT ---
@@ -1377,12 +1452,24 @@ createApp({
                 try {
                     if(!isDemoMode.value) {
                         await apiFetch(`/api/estimates/${id}`, { method: 'DELETE' });
-                        await loadEstimates();
+                        const nextPage = estimates.value.length === 1 && estimatePage.value > 0 ? estimatePage.value - 1 : estimatePage.value;
+                        await loadEstimates(nextPage);
                     } else {
                         estimates.value = estimates.value.filter(e => e.id !== id);
+                        estimateTotalElements.value = estimates.value.length;
                     }
                 } catch(e) { showMessage("Failed to delete: " + e.message, true); }
             });
+        };
+
+        const goToPreviousEstimatePage = async () => {
+            if (!canGoToPreviousEstimatePage.value) return;
+            await loadEstimates(estimatePage.value - 1);
+        };
+
+        const goToNextEstimatePage = async () => {
+            if (!canGoToNextEstimatePage.value) return;
+            await loadEstimates(estimatePage.value + 1);
         };
 
         const printEstimate = async (est) => {
@@ -1527,10 +1614,12 @@ createApp({
         return {
             isInitializing, isDemoMode, showSettings, apiBaseUrl, view, authMode, currentTab, loading, loadingCat, loadingProd, saving, errorMsg, successMsg, isAuthenticated, isAdmin, confirmDialog,
             credentials, signupData, businessInfo, hasBusinessProfile, businessFormData, isEditingProfile, estimates, serverStats, categories, products, availableProducts, groupedAvailableProducts, activeCategoriesInItems,
-            selectedCategoryId, selectedCategoryName, newCategoryName, showAddProduct, newProduct, formData, formMode, totals, searchQuery, filteredEstimates, dashboardStats,
+            selectedCategoryId, selectedCategoryName, newCategoryName, showAddProduct, newProduct, formData, formMode, totals, searchQuery, filteredEstimates, displayedEstimates, dashboardStats,
+            estimatePageDisplay, paginationLabel, canGoToPreviousEstimatePage, canGoToNextEstimatePage,
             toggleSettings, signup, login, logout, saveBusiness, handleLogoUpload, loadEstimates, loadCategories, createCategory, selectCategory, createProduct, deleteProduct,
             openCreateForm, openEditForm, addItem, removeItem, addNote, removeNote, addCategoryDiscount, removeCategoryDiscount,
             onProductSelect, hasActiveCategoryDiscount, getCategoryDiscountForProduct, saveEstimate, deleteEstimate, printEstimate, shareEstimate, formatCurrency, formatDate, calculateRowTotal,
+            goToPreviousEstimatePage, goToNextEstimatePage,
             openConfirm, closeConfirm, confirmAction
         };
     }

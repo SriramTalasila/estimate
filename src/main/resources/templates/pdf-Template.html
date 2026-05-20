@@ -35,10 +35,29 @@
         /* Header Section */
         .header-table { width: 100%; margin-bottom: 30px; }
         .company-name { font-size: 20pt; font-weight: bold; color: #2c3e50; }
-        .estimate-label { font-size: 24pt; font-weight: bold; color: #7f8c8d; text-align: right; }
-        .logo-placeholder { 
-            width: 80px; height: 80px; background-color: #666; border-radius: 50%; 
-            color: white; text-align: center; line-height: 80px; font-weight: bold; 
+        .estimate-label { font-size: 24pt; font-weight: bold; color: #7f8c8d; text-align: right; margin-bottom: 12px; }
+        .logo-wrapper {
+            display: block;
+            width: 110px;
+            height: 80px;
+            text-align: right;
+            margin-left: auto;
+        }
+        .logo-image {
+            display: block;
+            max-width: 110px;
+            max-height: 80px;
+            margin-left: auto;
+        }
+        .logo-placeholder {
+            width: 110px;
+            height: 80px;
+            border: 1px solid #d7d7d7;
+            color: #999;
+            text-align: center;
+            line-height: 80px;
+            font-size: 9pt;
+            font-weight: bold;
         }
 
         /* Customer Info */
@@ -101,9 +120,9 @@
                         &lt;Website / Email Address&gt;
                     </div>
                 </td>
-                <td width="30%" align="right">
+                <td width="30%" align="right" valign="top">
                     <div class="estimate-label">ESTIMATE</div>
-                    <div class="logo-placeholder">LOGO</div>
+                    <div class="logo-wrapper">{{businessLogo}}</div>
                 </td>
             </tr>
         </table>

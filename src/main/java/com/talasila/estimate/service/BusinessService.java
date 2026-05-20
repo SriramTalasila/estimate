@@ -6,6 +6,7 @@ import com.talasila.estimate.dto.ProductRequest;
 import com.talasila.estimate.model.*;
 import com.talasila.estimate.repository.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class BusinessService {
@@ -41,6 +43,7 @@ public class BusinessService {
         business.setShopAddress(businessRequest.getShopAddress());
         business.setPhone(businessRequest.getPhone());
         business.setGstNumber(businessRequest.getGstNumber());
+        business.setLogo(serializeLogo(businessRequest.getLogo()));
 
         Business savedBusiness = businessRepository.save(business);
 
@@ -59,6 +62,7 @@ public class BusinessService {
         business.setShopAddress(businessRequest.getShopAddress());
         business.setPhone(businessRequest.getPhone());
         business.setGstNumber(businessRequest.getGstNumber());
+        business.setLogo(serializeLogo(businessRequest.getLogo()));
 
         return businessRepository.save(business);
     }
@@ -138,5 +142,12 @@ public class BusinessService {
     @Transactional
     public void deleteProduct(Long productId) {
         productRepository.deleteById(productId);
+    }
+
+    private byte[] serializeLogo(String logo) {
+        if (!StringUtils.hasText(logo)) {
+            return null;
+        }
+        return logo.getBytes(StandardCharsets.UTF_8);
     }
 }

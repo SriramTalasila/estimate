@@ -6,16 +6,18 @@ public class BusinessResponse {
     private String shopAddress;
     private String phone;
     private String gstNumber;
+    private String logo;
 
     public BusinessResponse() {
     }
 
-    public BusinessResponse(Long id, String shopName, String shopAddress, String phone, String gstNumber) {
+    public BusinessResponse(Long id, String shopName, String shopAddress, String phone, String gstNumber, String logo) {
         this.id = id;
         this.shopName = shopName;
         this.shopAddress = shopAddress;
         this.phone = phone;
         this.gstNumber = gstNumber;
+        this.logo = logo;
     }
 
     public Long getId() {
@@ -56,5 +58,13 @@ public class BusinessResponse {
 
     public void setGstNumber(String gstNumber) {
         this.gstNumber = gstNumber;
+    }
+
+    public String getLogo() {
+        return logo;
+    }
+
+    public void setLogo(String logo) {
+        this.logo = logo;
     }
 }

@@ -1,5 +1,6 @@
 package com.talasila.estimate.controller;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -142,7 +143,13 @@ public class BusinessController {
     }
 
     private BusinessResponse mapToBusinessResponse(Business business) {
-        return new BusinessResponse(business.getId(), business.getShopName(), business.getShopAddress(), business.getPhone(), business.getGstNumber());
+        return new BusinessResponse(
+                business.getId(),
+                business.getShopName(),
+                business.getShopAddress(),
+                business.getPhone(),
+                business.getGstNumber(),
+                business.getLogo() == null ? null : new String(business.getLogo(), StandardCharsets.UTF_8));
     }
 
     private CategoryResponse mapToCategoryResponse(Category category) {

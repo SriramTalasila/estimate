@@ -1,6 +1,7 @@
 package com.talasila.estimate.controller;
 
 import com.talasila.estimate.dto.CategoryDiscountResponse;
+import com.talasila.estimate.dto.EstimatePageResponse;
 import com.talasila.estimate.dto.EstimateRequest;
 import com.talasila.estimate.dto.EstimateResponse;
 import com.talasila.estimate.dto.EstimateItemResponse;
@@ -12,6 +13,7 @@ import com.talasila.estimate.service.EstimateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
@@ -49,11 +51,22 @@ public class EstimateController {
     @GetMapping("/business/{businessId}/estimates")
     @PreAuthorize("hasAnyRole('BUSINESS_OWNER', 'EMPLOYEE') and @businessSecurityService.isUserInBusiness(authentication, #businessId)")
     @Operation(summary = "Get all estimates for a business")
-    public ResponseEntity<List<EstimateResponse>> getEstimatesByBusiness(@PathVariable Long businessId) {
-        List<Estimate> estimates = estimateService.getEstimatesByBusiness(businessId);
-        List<EstimateResponse> response = estimates.stream()
+    public ResponseEntity<EstimatePageResponse> getEstimatesByBusiness(@PathVariable Long businessId,
+                                                                       @RequestParam(defaultValue = "0") int page,
+                                                                       @RequestParam(defaultValue = "10") int size,
+                                                                       @RequestParam(required = false) String search) {
+        Page<Estimate> estimates = estimateService.getEstimatesByBusiness(businessId, page, size, search);
+        List<EstimateResponse> content = estimates.getContent().stream()
                 .map(this::mapToEstimateResponse)
                 .collect(Collectors.toList());
+
+        EstimatePageResponse response = new EstimatePageResponse();
+        response.setContent(content);
+        response.setPage(estimates.getNumber());
+        response.setSize(estimates.getSize());
+        response.setTotalElements(estimates.getTotalElements());
+        response.setTotalPages(estimates.getTotalPages());
+        response.setLast(estimates.isLast());
         return ResponseEntity.ok(response);
     }
 

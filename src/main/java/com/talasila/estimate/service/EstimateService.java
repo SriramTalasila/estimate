@@ -6,6 +6,11 @@ import com.talasila.estimate.dto.EstimateNoteRequest;
 import com.talasila.estimate.dto.EstimateRequest;
 import com.talasila.estimate.model.*;
 import com.talasila.estimate.repository.*;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +30,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class EstimateService {
 
     private final EstimateRepository estimateRepository;
@@ -85,6 +91,15 @@ public class EstimateService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Estimate> getEstimatesByBusiness(Long businessId, int page, int size, String search) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.min(Math.max(size, 1), 100);
+        return estimateRepository.findByBusinessIdOrderByCreatedAtDesc(
+                businessId,
+                PageRequest.of(normalizedPage, normalizedSize));
+    }
+
+    @Transactional(readOnly = true)
     public byte[] generateEstimatePdf(Long estimateId) {
         Estimate estimate = estimateRepository.findById(estimateId)
                 .orElseThrow(() -> new RuntimeException("Estimate not found with id: " + estimateId));
@@ -97,6 +112,7 @@ public class EstimateService {
             html = html.replace("&lt;Company Name&gt;", escapeHtml(estimate.getBusiness().getShopName() != null ? estimate.getBusiness().getShopName() : "Business"));
             html = html.replace("&lt;123 Street Address, City, State&gt;", escapeHtml(estimate.getBusiness().getShopAddress() != null ? estimate.getBusiness().getShopAddress() : ""));
             html = html.replace("&lt;Website / Email Address&gt;", escapeHtml(estimate.getBusiness().getPhone() != null ? estimate.getBusiness().getPhone() : ""));
+            html = html.replace("{{businessLogo}}", buildBusinessLogoHtml(estimate.getBusiness()));
 
             // Customer Info
             html = html.replace("{{customerName}}", escapeHtml(estimate.getCustomer() != null && estimate.getCustomer().getName() != null ? estimate.getCustomer().getName() : "Walk-in Customer"));
@@ -308,5 +324,26 @@ public class EstimateService {
     private String escapeHtml(String text) {
         if (text == null) return "";
         return org.springframework.web.util.HtmlUtils.htmlEscape(text).replace("\n", "<br/>");
+    }
+
+    private String buildBusinessLogoHtml(Business business) {
+        if (business == null || business.getLogo() == null || business.getLogo().length == 0) {
+            return "<div class=\"logo-placeholder\">NO LOGO</div>";
+        }
+
+        String logoDataUrl = new String(business.getLogo(), StandardCharsets.UTF_8);
+        if (!StringUtils.hasText(logoDataUrl)) {
+            return "<div class=\"logo-placeholder\">NO LOGO</div>";
+        }
+        log.info("logoDataUrl: " + logoDataUrl);
+
+        return "<img class=\"logo-image\" src=\"" + escapeHtmlAttribute(logoDataUrl) + "\" alt=\"Business logo\" />";
+    }
+
+    private String escapeHtmlAttribute(String text) {
+        if (text == null) {
+            return "";
+        }
+        return org.springframework.web.util.HtmlUtils.htmlEscape(text);
     }
 }

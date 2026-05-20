@@ -14,6 +14,8 @@ public class BusinessRequest {
 
     private String gstNumber;
 
+    private String logo;
+
     public String getShopName() {
         return shopName;
     }
@@ -44,5 +46,13 @@ public class BusinessRequest {
 
     public void setGstNumber(String gstNumber) {
         this.gstNumber = gstNumber;
+    }
+
+    public String getLogo() {
+        return logo;
+    }
+
+    public void setLogo(String logo) {
+        this.logo = logo;
     }
 }
